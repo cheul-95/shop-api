@@ -1,0 +1,27 @@
+services:
+    mysql:
+      image: mysql:8.4
+      container_name: shop-mysql
+      restart: unless-stopped
+      ports:
+        - "3308:3306"   # 로컬 MySQL/MariaDB(3306)와 충돌 방지 → 호스트에선 3308로 접속
+      environment:
+        MYSQL_ROOT_PASSWORD: root
+        MYSQL_DATABASE: shop
+        MYSQL_USER: shop
+        MYSQL_PASSWORD: shop
+        TZ: Asia/Seoul
+      command:
+        - --character-set-server=utf8mb4
+        - --collation-server=utf8mb4_unicode_ci
+      volumes:
+        - mysql-data:/var/lib/mysql
+      healthcheck:
+        test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot" ]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+
+volumes:
+    mysql-data:

@@ -1,0 +1,33 @@
+# ── 공통 설정 (모든 환경) ──
+# 환경별 설정은 application-{profile}.yml 에 둔다. 프로필 미지정 시 local 로 실행
+spring:
+  application:
+    name: shop
+
+  profiles:
+    default: local
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+
+  jpa:
+    # 컨트롤러/뷰까지 영속성 컨텍스트 유지 X → 커넥션을 트랜잭션 범위에서만 사용
+    # 지연로딩은 서비스 계층(@Transactional) 안에서 끝내야 함
+    open-in-view: false
+
+    # SQL은 logging으로 출력하므로 System.out 중복 출력은 끔
+    show-sql: false
+
+    properties:
+      hibernate:
+        format_sql: true
+        highlight_sql: true
+        # 지연로딩 컬렉션/연관관계를 IN 쿼리로 묶어서 조회 → N+1 완화
+        default_batch_fetch_size: 100
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method

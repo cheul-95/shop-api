@@ -1,0 +1,20 @@
+# ── 로컬 개발 환경 ──
+spring:
+  # DB 연결 (docker-compose: 호스트 3308 → 컨테이너 3306)
+  # 환경변수가 없으면 : 뒤의 기본값(docker-compose 계정) 사용
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3308}/${DB_NAME:shop}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${DB_USERNAME:shop}
+    password: ${DB_PASSWORD:shop}
+
+  jpa:
+    hibernate:
+      # 로컬 전용. 운영은 validate + 마이그레이션 도구(Flyway 등)로 관리
+      ddl-auto: update
+
+# ── SQL 로그 (로컬 전용: bind trace는 비밀번호 등 파라미터 값까지 찍힘) ──
+logging:
+  level:
+    org.hibernate.SQL: debug              # 실행 SQL
+    org.hibernate.orm.jdbc.bind: trace    # ? 에 바인딩된 파라미터 값
+    com.zaxxer.hikari.HikariConfig: debug

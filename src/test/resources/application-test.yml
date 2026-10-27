@@ -1,0 +1,11 @@
+# ── 테스트 환경 ──
+# datasource는 TestcontainersConfiguration의 @ServiceConnection이 자동 주입
+spring:
+  jpa:
+    hibernate:
+      # 테스트마다 새 컨테이너 → 스키마 생성 후 종료 시 삭제
+      ddl-auto: create-drop
+
+logging:
+  level:
+    org.hibernate.SQL: debug
