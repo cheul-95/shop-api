@@ -18,7 +18,7 @@
 
 **완료 조건**: 앱을 실행하면 SQL 로그에 테이블 5개의 CREATE 문이 보이고, `ProductTest`(재고 차감 / 재고 부족)가 통과한다.
 
-진행 상황은 [8. 미션 2 남은 과제](#8-미션-2-남은-과제) 참고.
+진행 상황은 [8. 미션 2 체크리스트](#8-미션-2-체크리스트) 참고.
 
 ## ERD
 
@@ -160,7 +160,7 @@ public class Order extends BaseTimeEntity {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
 
-    public Order(Member member) {
+    private Order(Member member) {
         this.member = member;
         this.orderStatus = OrderStatus.PENDING;
     }
@@ -169,6 +169,24 @@ public class Order extends BaseTimeEntity {
         items.add(item);
         item.setOrder(this);
         totalPrice += item.getOrderPrice() * item.getQuantity();
+    }
+
+    public static Order create(Member member, OrderItem... items) {
+        Order order = new Order(member);
+        for (OrderItem orderItem : items) {
+            order.addItem(orderItem);
+        }
+        return order;
+    }
+
+    public void cancel() {
+        if (this.orderStatus == OrderStatus.CANCELED) {
+            throw new BusinessException(ErrorCode.ALREADY_CANCELED_ORDER);
+        }
+        for (OrderItem orderItem : items) {
+            orderItem.cancel();
+        }
+        this.orderStatus = OrderStatus.CANCELED;
     }
 }
 ```
@@ -183,7 +201,7 @@ public class OrderItem {
     @Column(name = "order_price", nullable = false)
     private int orderPrice;
 
-    public OrderItem(Product product, int quantity) {
+    private OrderItem(Product product, int quantity) {
         this.product = product;
         this.quantity = quantity;
         this.orderPrice = product.getPrice();
@@ -191,6 +209,16 @@ public class OrderItem {
 
     void setOrder(Order order) {
         this.order = order;
+    }
+
+    public static OrderItem create(Product product, int quantity) {
+        OrderItem orderItem = new OrderItem(product, quantity);
+        product.decreaseStock(quantity);
+        return orderItem;
+    }
+
+    public void cancel() {
+        product.increaseStock(quantity);
     }
 }
 ```
@@ -216,9 +244,9 @@ public class OrderItem {
 | `orphanRemoval = true` | `items.remove(item)`처럼 리스트에서 빠진 항목은 DB에서도 삭제 |
 
 ```java
-Order order = new Order(member);
-order.addItem(new OrderItem(notebook, 2));
-order.addItem(new OrderItem(mouse, 1));
+Order order = Order.create(member,
+        OrderItem.create(notebook, 2),
+        OrderItem.create(mouse, 1));
 
 orderRepository.save(order);   // cascade 덕분에 OrderItem 2개도 같이 INSERT
 ```
@@ -271,8 +299,8 @@ public Order(Member member, OrderStatus orderStatus, int totalPrice) {
     this.orderStatus = OrderStatus.PENDING;
 }
 
-// O
-public Order(Member member) {
+// O (create()에서만 호출하므로 private)
+private Order(Member member) {
     this.member = member;
     this.orderStatus = OrderStatus.PENDING;
 }
@@ -280,6 +308,53 @@ public Order(Member member) {
 
 - 새 주문은 항상 `PENDING`으로 시작해야 한다. 생성 시점에 `PAID`로 만들어지면 안 된다.
 - 파라미터로 받아놓고 무시하면, 호출하는 쪽은 `PAID`를 넘기면 그게 들어갈 거라고 오해한다.
+
+### 정적 팩토리 메서드 `create()`
+
+```java
+Order order = new Order(member);                                  // X: private 생성자
+Order order = Order.create(member, notebookItem, mouseItem);      // O
+```
+
+- 생성자를 `private`으로 막고 `public static create()`로만 만들게 한다.
+- 생성 규칙(초기 상태, 아이템 추가, 총액 계산, 재고 차감)이 `create()` 한 곳에 모인다. 생성자가 열려 있으면 `new`로 규칙을 건너뛸 수 있다.
+- `static`인 이유: 객체가 **아직 없을 때** 호출하는 메서드라서. 그래서 안에서는 `this`가 없고, 방금 만든 `order` 변수에 `order.addItem()`처럼 호출한다.
+- `OrderItem... items`는 **가변인자**. 아이템을 원하는 만큼 넘길 수 있고, 메서드 안에서는 배열처럼 쓴다.
+- `create()`를 static으로 만들었다고 `addItem()`, `items`, `totalPrice`까지 `static`으로 바꾸면 안 된다. static 필드는 **모든 주문이 공유**하고, JPA는 static 필드를 컬럼으로 매핑하지 않는다. (IntelliJ 빠른 수정이 static을 제안해도 호출하는 쪽을 고쳐야 한다)
+- PHP의 `private function __construct()` + `public static function create()`와 같은 패턴.
+
+### 생성 시 재고 차감, 취소 시 재고 복구
+
+| 동작 | 위치 | 하는 일 |
+|---|---|---|
+| 재고 차감 | `OrderItem.create()` | `product.decreaseStock(quantity)` |
+| 재고 복구 | `OrderItem.cancel()` | `product.increaseStock(quantity)` |
+| 주문 취소 | `Order.cancel()` | 상태 확인 → 각 아이템 `cancel()` → `CANCELED`로 변경 |
+
+- 차감과 복구를 둘 다 `OrderItem`에 둬서 짝을 맞췄다. 수량을 아는 것도 `OrderItem`이다.
+- `Order`가 `orderItem.getProduct().increaseStock(...)`처럼 아이템 속을 꺼내 직접 만지지 않고, `orderItem.cancel()`로 **시킨다**. `a.getB().doSomething()`처럼 점이 이어지면 한 번 의심해 볼 신호.
+- 재고가 부족하면 `OrderItem.create()`에서 예외가 나서 아이템 자체가 만들어지지 않는다.
+
+### 취소는 가드 절로
+
+```java
+public void cancel() {
+    if (this.orderStatus == OrderStatus.CANCELED) {
+        throw new BusinessException(ErrorCode.ALREADY_CANCELED_ORDER);
+    }
+    ...
+}
+```
+
+- 이미 취소된 주문을 다시 취소하면 재고가 두 번 복구된다 → 맨 앞에서 확인하고 예외.
+- 조용히 `return`하면 호출한 쪽은 취소가 성공한 줄 안다. 예외를 던져야 API에서 에러로 응답할 수 있다.
+- 조건에 걸리면 바로 끝내고 아래에 본 로직을 평평하게 두는 형태를 **가드 절**이라고 한다. `return`/`throw` 뒤에 `else`는 필요 없다.
+- enum은 값마다 객체가 하나뿐이라 `==`로 비교한다. 왼쪽이 `null`이어도 NPE가 나지 않는다.
+- `PAID` 주문의 취소는 현재 허용한다 (`CANCELED`만 막음).
+
+### ErrorCode는 맨 뒤에 추가
+
+새 에러 코드를 중간에 끼우면 기존 항목의 번호가 밀린다. 에러 코드는 프론트엔드와의 약속이라 **기존 번호는 바꾸지 않고, 새 항목은 맨 뒤에 새 번호로** 추가한다. (`EnumType.ORDINAL`을 쓰지 않는 이유와 같은 원리)
 
 ## 7. 엔티티 설계 체크리스트
 
@@ -292,11 +367,13 @@ public Order(Member member) {
 - [ ] `@ManyToOne`은 `fetch = LAZY`
 - [ ] 양방향이면 `mappedBy` + 편의 메서드 + 컬렉션 초기화
 - [ ] 생성자에서 초기 상태 고정, 쓰지 않는 파라미터 없음
+- [ ] 생성 규칙이 있으면 생성자를 막고 정적 팩토리 `create()`로
+- [ ] `static`은 객체 없이 호출하는 메서드에만
 - [ ] 쓰지 않는 import 정리
 
-## 8. 미션 2 남은 과제
+## 8. 미션 2 체크리스트
 
-완료 조건(테이블 5개 생성, `ProductTest` 통과)은 충족했다. 미션 체크리스트 기준으로는 아래가 남았다.
+완료 조건(테이블 5개 생성, `ProductTest` 통과)과 체크리스트를 모두 충족했다.
 
 | 항목 | 상태 | 비고 |
 |---|---|---|
@@ -306,12 +383,7 @@ public Order(Member member) {
 | 연관관계 편의 메서드 | ✅ | `Order.addItem()` |
 | 테이블 5개 CREATE | ✅ | member, category, product, orders, order_item |
 | `ProductTest` (재고 차감 / 재고 부족) | ✅ | 수량 0, 음수까지 4개 |
-| 정적 팩토리 `create()` | ⬜ | 지금은 `public` 생성자 사용 |
-| OrderItem 생성할 때 재고 차감 | ⬜ | 지금은 가격만 기록하고 재고는 그대로 |
-| `Order.cancel()` 시 재고 복구 | ⬜ | `cancel()` 메서드 없음 |
-
-### 키워드
-
-- **정적 팩토리 메서드**: `new Order(member)` 대신 `Order.create(member, items...)`. 이름으로 의도를 드러내고, 생성 규칙(초기 상태, 아이템 추가, 총액 계산)을 한 곳에 모을 수 있다. 생성자는 `private`/`protected`로 막는다. (`ErrorResponse.of()`가 같은 패턴)
-- **생성 시 재고 차감**: `OrderItem`을 만들 때 `product.decreaseStock(quantity)`를 호출. 재고가 부족하면 `OrderItem`이 만들어지지 않는다.
-- **취소 시 재고 복구**: `Product`에 재고를 늘리는 메서드, `OrderItem`에 취소 메서드, `Order.cancel()`에서 상태 변경 + 모든 아이템 취소. 이미 취소된 주문이나 결제 완료된 주문을 취소할 수 있는지도 생각해볼 것.
+| 정적 팩토리 `create()` | ✅ | `Order.create()`, `OrderItem.create()`, 생성자는 private |
+| OrderItem 생성할 때 재고 차감 | ✅ | `OrderItem.create()` → `decreaseStock()` |
+| `Order.cancel()` 시 재고 복구 | ✅ | 이미 취소된 주문은 `ALREADY_CANCELED_ORDER` 예외 |
+| `OrderTest` | ✅ | 생성/총액, 취소 시 재고 복구, 두 번 취소 시 예외 + 재고 유지 |

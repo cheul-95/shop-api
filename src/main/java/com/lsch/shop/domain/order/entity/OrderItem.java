@@ -31,7 +31,7 @@ public class OrderItem {
     @Column(name = "order_price", nullable = false)
     private int orderPrice;
 
-    public OrderItem(Product product, int quantity) {
+    private OrderItem(Product product, int quantity) {
         this.product = product;
         this.quantity = quantity;
         this.orderPrice = product.getPrice();
@@ -39,5 +39,15 @@ public class OrderItem {
 
     void setOrder(Order order) {
         this.order = order;
+    }
+
+    public static OrderItem create(Product product, int quantity) {
+        OrderItem orderItem = new OrderItem(product, quantity);
+        product.decreaseStock(quantity);
+        return orderItem;
+    }
+
+    public void cancel() {
+        product.increaseStock(quantity);
     }
 }

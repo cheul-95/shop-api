@@ -2,6 +2,8 @@ package com.lsch.shop.domain.order.entity;
 
 import com.lsch.shop.domain.member.entity.Member;
 import com.lsch.shop.global.entity.BaseTimeEntity;
+import com.lsch.shop.global.error.ErrorCode;
+import com.lsch.shop.global.error.exception.BusinessException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -35,7 +37,7 @@ public class Order extends BaseTimeEntity {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
 
-    public Order(Member member) {
+    private Order(Member member) {
         this.member = member;
         this.orderStatus = OrderStatus.PENDING;
     }
@@ -44,5 +46,26 @@ public class Order extends BaseTimeEntity {
         items.add(item);
         item.setOrder(this);
         totalPrice += item.getOrderPrice() * item.getQuantity();
+    }
+
+    public static Order create(Member member, OrderItem... items) {
+        Order order = new Order(member);
+        for (OrderItem orderItem : items) {
+            order.addItem(orderItem);
+        }
+        return order;
+    }
+
+    public void cancel() {
+        //주문이 취소상태가 아닐경우
+        if (this.orderStatus == OrderStatus.CANCELED) {
+            throw new BusinessException(ErrorCode.ALREADY_CANCELED_ORDER);
+        }
+        //제품 재고 복구
+        for (OrderItem orderItem : items) {
+            orderItem.cancel();
+        }
+        //상태변경
+        this.orderStatus = OrderStatus.CANCELED;
     }
 }

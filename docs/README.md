@@ -17,7 +17,7 @@ Spring Boot / JPA를 미션 단위로 공부하면서 정리한 문서입니다.
 |---|---|---|---|
 | 0. 프로젝트 생성 | 의존성, docker-compose(MySQL 8.4), application.yml | 앱 실행 시 `Started ...Application` | ✅ 완료 |
 | 1. 공통 코드 | BaseTimeEntity + Auditing, ErrorCode, BusinessException, GlobalExceptionHandler | 없는 상품 조회 시 404 `{"code":"PRODUCT_NOT_FOUND", ...}` (미션 3에서 확인) | ✅ 코드 완료, 완료 조건은 미션 3에서 확인 |
-| 2. 엔티티 | Member, Category, Product, Order, OrderItem | SQL 로그에 테이블 5개 CREATE, `ProductTest` 통과 | 🟡 완료 조건 충족, 체크리스트 일부 남음 ([남은 과제](02-entity-design.md#8-미션-2-남은-과제)) |
+| 2. 엔티티 | Member, Category, Product, Order, OrderItem | SQL 로그에 테이블 5개 CREATE, `ProductTest` 통과 | ✅ 완료 |
 | 3. 상품 조회 API | `GET /api/products?keyword=&page=&size=`, `GET /api/products/{id}`, DTO 응답, data.sql | 목록 조회 시 SELECT 2번(목록 + 개수)만, 카테고리 N+1 없음 | ⬜ |
 | 4. 회원가입 / 로그인 | `POST /api/auth/signup`, `POST /api/auth/login`, BCrypt, 중복 409 | 가입 201 → 중복 가입 409 → 틀린 비밀번호 401 | ⬜ |
 | 5. JWT 발급 | jjwt, secret/만료시간은 yml, `{accessToken, tokenType, expiresIn}` | jwt.io에서 sub, role 확인 / `JwtProviderTest`(정상/만료/다른 키/형식 오류) 통과 | ⬜ |

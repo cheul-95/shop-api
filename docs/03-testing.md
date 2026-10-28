@@ -134,29 +134,53 @@ void decreaseStock_outOfStock() {
 
 ```java
 @Test
-void addItem_calculatesTotalPrice() {
+void create_calculatesTotalPrice() {
     Member member = new Member("test@test.com", "test", "테스터");
-    Order order = new Order(member);
     Category category = new Category("전자제품");
 
     Product notebook = new Product("노트북", category, 1_000_000, 100);
     Product mouse = new Product("마우스", category, 30_000, 100);
 
-    OrderItem notebookItem = new OrderItem(notebook, 2);
-    OrderItem mouseItem = new OrderItem(mouse, 1);
+    OrderItem notebookItem = OrderItem.create(notebook, 2);
+    OrderItem mouseItem = OrderItem.create(mouse, 1);
 
-    order.addItem(notebookItem);
-    order.addItem(mouseItem);
+    Order order = Order.create(member, notebookItem, mouseItem);
 
     assertThat(order.getTotalPrice()).isEqualTo(2_030_000);
     assertThat(order.getItems()).hasSize(2);
     assertThat(notebookItem.getOrder()).isEqualTo(order);   // 양방향 연결 확인
     assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.PENDING);
+    assertThat(notebook.getStock()).isEqualTo(98);          // 생성 시 재고 차감
+}
+
+@Test
+void cancel_twice_throwsException() {
+    // ... 같은 준비 코드 ...
+    order.cancel();
+
+    assertThatThrownBy(() -> order.cancel())
+            .isInstanceOf(BusinessException.class)
+            .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ALREADY_CANCELED_ORDER);
+    assertThat(notebook.getStock()).isEqualTo(100);         // 두 번 복구되지 않음 (110이면 버그)
 }
 ```
 
 - 수량을 2개 이상으로 둬야 "수량을 곱하는지"를 검증할 수 있다. 전부 1개면 곱하지 않는 버그를 못 잡는다.
 - 재고(100)와 주문 수량(2)을 다르게 둬야 `getStock()`과 `getQuantity()`를 혼동한 버그를 잡는다.
+- `create()`를 쓰고 나서 `addItem()`을 또 호출하면 아이템이 두 번 들어간다. `hasSize(2)`와 총액 검증이 이걸 잡아냈다.
+
+### 기대값은 직접 계산하지 않는다
+
+```java
+assertThat(notebook.getStock() - notebookItem.getQuantity()).isEqualTo(98);   // X: 100 - 2를 테스트가 계산 → 항상 통과
+assertThat(notebook.getStock()).isEqualTo(98);                                 // O: 코드가 차감한 결과를 검증
+```
+
+계산은 코드가 하고, 테스트는 결과만 확인한다. 테스트 안에서 계산하면 코드에 버그가 있어도 통과한다.
+
+### 실패하는 테스트를 지워서 통과시키지 않는다
+
+두 번 취소 테스트에서 예외가 나서 실패했을 때, 두 번째 `cancel()`을 지우면 통과는 하지만 **아무것도 검증하지 않는 테스트**가 된다. 예외가 의도한 동작이면 `assertThatThrownBy`로 기대한다고 적는다.
 
 ## 6. 좋은 테스트 작성 규칙
 
@@ -192,7 +216,6 @@ void addItem_calculatesTotalPrice() {
 
 | 미션 | 테스트 | 검증할 것 |
 |---|---|---|
-| 2 (남은 과제) | `OrderTest` 추가 | 주문 생성 시 재고 차감, `cancel()` 시 재고 복구 |
 | 5 | `JwtProviderTest` | 정상 토큰 / 만료 / 다른 키로 서명 / 형식 오류 |
 | 보너스 | 주문 생성 | `@Transactional` 유무에 따라 재고가 실제로 줄어드는지 |
 
