@@ -9,7 +9,6 @@ Spring Boot / JPA를 미션 단위로 공부하면서 정리한 문서입니다.
 | [01. 공통 코드](01-common-code.md) | BaseTimeEntity, ErrorCode, BusinessException, 전역 예외 처리 | `916e8ea` |
 | [02. 엔티티 설계](02-entity-design.md) | Member, Category, Product, Order, OrderItem과 연관관계 매핑 | `73459c9`, `9ff154f` |
 | [03. 테스트](03-testing.md) | 단위 테스트, AssertJ, 예외 검증, 슬라이스/통합 테스트 | 전체 |
-| [04. Git 작업 흐름](04-git-workflow.md) | 브랜치, 머지, 원격 저장소 연결, 푸시 | - |
 | [트러블슈팅](troubleshooting.md) | 실제로 겪은 오류와 버그, 원인과 해결 | - |
 
 ## 미션 로드맵
@@ -24,6 +23,18 @@ Spring Boot / JPA를 미션 단위로 공부하면서 정리한 문서입니다.
 | 5. JWT 발급 | jjwt, secret/만료시간은 yml, `{accessToken, tokenType, expiresIn}` | jwt.io에서 sub, role 확인 / `JwtProviderTest`(정상/만료/다른 키/형식 오류) 통과 | ⬜ |
 | 6. JWT 인증 필터 | Bearer 토큰 검증, 경로별 허용/인증, `GET /api/members/me`, 401/403 JSON | 토큰 없이 /me → 401 / 토큰과 함께 → 200 / 상품 조회는 토큰 없이 200 | ⬜ |
 | 🎁 보너스 | `POST /api/orders` 주문 생성 + 재고 차감, 재고 부족 409 | DB 재고 감소 확인, `@Transactional` 제거 시 재고가 안 줄어드는 것 확인 | ⬜ |
+
+## 새 문서 작성하기
+
+| 템플릿 | 언제 |
+|---|---|
+| [미션 템플릿](templates/mission-template.md) | 미션 하나를 끝냈을 때 → `NN-미션이름.md`로 복사 |
+| [트러블슈팅 템플릿](templates/troubleshooting-template.md) | 오류나 버그를 해결했을 때 → `troubleshooting.md`에 항목 추가 |
+
+1. 템플릿을 복사해서 채운다.
+2. 위 문서 목록 표와 미션 로드맵 상태를 갱신한다.
+3. 엔티티나 API가 바뀌었으면 루트 README의 ERD / API 목록도 갱신한다.
+4. 코드와 같은 커밋(또는 바로 다음 `docs:` 커밋)으로 남긴다.
 
 ## 진행 방식
 
