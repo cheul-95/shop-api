@@ -11,9 +11,12 @@
 
 요구사항 외에 404(없는 URL), 405(지원하지 않는 메서드), 500(예상 못 한 예외)까지 처리했다.
 
-> **미션 3에서 결정할 것**: 완료 조건 예시는 `code`가 `"PRODUCT_NOT_FOUND"`처럼 **enum 이름**이다. 지금 `ErrorCode`는 `"0005"` 같은 **숫자 코드**를 따로 두고 있다. 둘 중 하나로 통일해야 한다.
+> **미션 3에서 결정함: 에러 코드는 enum 이름으로 통일**
+> 처음에는 `ErrorCode`에 `"0005"` 같은 숫자 코드를 따로 뒀는데, 완료 조건 예시는 `"PRODUCT_NOT_FOUND"`처럼 enum 이름이었다.
 > - enum 이름 사용: `errorCode.name()`을 응답 → 별도 `code` 필드가 필요 없고, 읽기만 해도 의미를 안다.
 > - 숫자 코드 유지: 코드 체계가 따로 있는 회사 규칙에 맞추기 쉽지만, 번호만 보고는 의미를 모른다.
+>
+> 따로 정해진 코드 체계가 없으니 **enum 이름**을 쓰기로 했다. `code` 필드를 지우고 `ErrorResponse`에서 `errorCode.name()`을 응답한다.
 
 ---
 
@@ -60,24 +63,26 @@ public abstract class BaseTimeEntity {
 @Getter
 @AllArgsConstructor
 public enum ErrorCode {
-    SYSTEM_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "0000", "시스템 에러입니다."),
-    INVALID_INPUT(HttpStatus.BAD_REQUEST, "0001", "입력값이 올바르지 않습니다."),
-    INVALID_JSON(HttpStatus.BAD_REQUEST, "0002", "요청 형식이 올바르지 않습니다."),
-    NOT_FOUND(HttpStatus.NOT_FOUND, "0003", "요청한 리소스를 찾을 수 없습니다."),
-    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "0004", "지원하지 않는 HTTP 메서드입니다."),
-    OUT_OF_STOCK(HttpStatus.BAD_REQUEST, "0005", "재고가 부족합니다"),
-    INVALID_QUANTITY(HttpStatus.BAD_REQUEST, "0006", "수량은 1 이상이어야 합니다");
+    SYSTEM_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "시스템 에러입니다."),
+    INVALID_INPUT(HttpStatus.BAD_REQUEST, "입력값이 올바르지 않습니다."),
+    INVALID_JSON(HttpStatus.BAD_REQUEST, "요청 형식이 올바르지 않습니다."),
+    NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."),
+    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메서드입니다."),
+    OUT_OF_STOCK(HttpStatus.BAD_REQUEST, "재고가 부족합니다"),
+    INVALID_QUANTITY(HttpStatus.BAD_REQUEST, "수량은 1 이상이어야 합니다"),
+    ALREADY_CANCELED_ORDER(HttpStatus.BAD_REQUEST, "이미 취소된 주문입니다"),
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다.");
 
     private final HttpStatus status;
-    private final String code;
     private final String message;
 }
 ```
 
-- HTTP 상태, 에러 코드, 메시지를 **한 묶음**으로 관리한다.
+- HTTP 상태와 메시지를 **한 묶음**으로 관리한다. 에러 코드는 enum 이름(`OUT_OF_STOCK`) 자체를 쓴다.
 - 에러 메시지를 코드 곳곳에 문자열로 흩어놓지 않아도 된다. 수정할 때 여기만 고치면 된다.
 - 프론트엔드는 메시지 문구가 아니라 `code`로 분기 처리할 수 있다.
-- 도메인 에러가 생길 때마다 여기에 추가한다 (미션2에서 `OUT_OF_STOCK`, `INVALID_QUANTITY` 추가).
+- enum 이름이 곧 API 응답 값이 되므로, 한번 공개한 이름은 함부로 바꾸면 안 된다.
+- 도메인 에러가 생길 때마다 여기에 추가한다 (미션2에서 `OUT_OF_STOCK`, `INVALID_QUANTITY`, `ALREADY_CANCELED_ORDER`, 미션3에서 `PRODUCT_NOT_FOUND` 추가).
 
 ## 3. BusinessException: 비즈니스 예외
 
@@ -111,7 +116,7 @@ public class BusinessException extends RuntimeException {
 ```java
 public record ErrorResponse(String code, String message) {
     public static ErrorResponse of(ErrorCode errorCode) {
-        return new ErrorResponse(errorCode.getCode(), errorCode.getMessage());
+        return new ErrorResponse(errorCode.name(), errorCode.getMessage());
     }
 }
 ```
@@ -119,7 +124,7 @@ public record ErrorResponse(String code, String message) {
 모든 에러 응답이 같은 형태로 나간다.
 
 ```json
-{ "code": "0005", "message": "재고가 부족합니다" }
+{ "code": "OUT_OF_STOCK", "message": "재고가 부족합니다" }
 ```
 
 ### record
@@ -130,7 +135,7 @@ public record ErrorResponse(String code, String message) {
 
 ### 정적 팩토리 메서드 `of()`
 
-`new ErrorResponse(errorCode.getCode(), errorCode.getMessage())` 대신 `ErrorResponse.of(errorCode)`로 의도가 드러나게 만든다.
+`new ErrorResponse(errorCode.name(), errorCode.getMessage())` 대신 `ErrorResponse.of(errorCode)`로 의도가 드러나게 만든다.
 
 ## 5. GlobalExceptionHandler: 전역 예외 처리
 

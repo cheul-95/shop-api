@@ -11,6 +11,16 @@ spring:
     hibernate:
       # 로컬 전용. 운영은 validate + 마이그레이션 도구(Flyway 등)로 관리
       ddl-auto: update
+    # data.sql을 JPA 테이블 생성 "후"에 실행 (기본은 data.sql이 먼저라 테이블이 없어서 실패)
+    defer-datasource-initialization: true
+
+  # 샘플 데이터(data.sql) 실행 설정
+  sql:
+    init:
+      # MySQL은 내장 DB가 아니라서 기본값(embedded)으로는 data.sql이 실행되지 않음
+      mode: always
+      # 지정하지 않으면 OS 기본 인코딩(Windows는 MS949)으로 읽어서 한글이 깨질 수 있음
+      encoding: UTF-8
 
 # ── SQL 로그 (로컬 전용: bind trace는 비밀번호 등 파라미터 값까지 찍힘) ──
 logging:
