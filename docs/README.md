@@ -9,7 +9,7 @@ Spring Boot / JPA를 미션 단위로 공부하면서 정리한 문서입니다.
 | [01. 공통 코드](01-common-code.md) | BaseTimeEntity, ErrorCode, BusinessException, 전역 예외 처리 | `916e8ea` |
 | [02. 엔티티 설계](02-entity-design.md) | Member, Category, Product, Order, OrderItem과 연관관계 매핑 | `73459c9`, `9ff154f` |
 | [03. 테스트](03-testing.md) | 단위 테스트, AssertJ, 예외 검증, 슬라이스/통합 테스트 | 전체 |
-| [04. 상품 조회 API](04-product-api.md) | DTO 응답, 페이징 검색, N+1과 `@EntityGraph`, 기본 정렬, data.sql | (커밋 후 추가) |
+| [04. 상품 조회 API](04-product-api.md) | DTO 응답, 페이징 검색, N+1과 `@EntityGraph`, 기본 정렬, data.sql | `b4a086c` |
 | [트러블슈팅](troubleshooting.md) | 실제로 겪은 오류와 버그, 원인과 해결 | - |
 
 ## 미션 로드맵
