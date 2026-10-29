@@ -58,6 +58,15 @@ erDiagram
 - `order_item.order_price`: 상품 가격이 바뀌어도 과거 주문 금액이 유지되도록 주문 시점 가격을 따로 저장
 - `orders` ↔ `order_item`: 1:N 양방향, 주문과 함께 저장/삭제 (cascade, orphanRemoval)
 
+## API
+
+| 메서드 | 경로 | 설명 | 인증 |
+|---|---|---|---|
+| GET | `/api/products?keyword=&page=&size=&sort=` | 상품 목록 (이름 검색, 페이징, 기본 최신순) | X |
+| GET | `/api/products/{id}` | 상품 상세 (없으면 404 `PRODUCT_NOT_FOUND`) | X |
+
+에러 응답은 모두 `{"code": "ERROR_CODE", "message": "..."}` 형식입니다.
+
 ## 기술 스택
 
 - Java 17, Spring Boot 4.1

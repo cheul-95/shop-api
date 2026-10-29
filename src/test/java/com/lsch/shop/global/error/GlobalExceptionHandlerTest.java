@@ -31,7 +31,7 @@ class GlobalExceptionHandlerTest {
     void 비즈니스_예외는_ErrorCode의_상태와_메시지로_응답한다() throws Exception {
         mockMvc.perform(get("/test/business"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_INPUT.getCode()))
+                .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_INPUT.name()))
                 .andExpect(jsonPath("$.message").value(ErrorCode.INVALID_INPUT.getMessage()));
     }
 
@@ -41,7 +41,7 @@ class GlobalExceptionHandlerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\": \"\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_INPUT.getCode()));
+                .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_INPUT.name()));
     }
 
     @Test
@@ -50,28 +50,28 @@ class GlobalExceptionHandlerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\": }"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_JSON.getCode()));
+                .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_JSON.name()));
     }
 
     @Test
     void 없는_경로는_404_NOT_FOUND() throws Exception {
         mockMvc.perform(get("/test/nope"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value(ErrorCode.NOT_FOUND.getCode()));
+                .andExpect(jsonPath("$.code").value(ErrorCode.NOT_FOUND.name()));
     }
 
     @Test
     void 지원하지_않는_메서드는_405_METHOD_NOT_ALLOWED() throws Exception {
         mockMvc.perform(get("/test/validation"))
                 .andExpect(status().isMethodNotAllowed())
-                .andExpect(jsonPath("$.code").value(ErrorCode.METHOD_NOT_ALLOWED.getCode()));
+                .andExpect(jsonPath("$.code").value(ErrorCode.METHOD_NOT_ALLOWED.name()));
     }
 
     @Test
     void 예상하지_못한_예외는_500_SYSTEM_ERROR() throws Exception {
         mockMvc.perform(get("/test/unexpected"))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.code").value(ErrorCode.SYSTEM_ERROR.getCode()))
+                .andExpect(jsonPath("$.code").value(ErrorCode.SYSTEM_ERROR.name()))
                 .andExpect(jsonPath("$.message").value(ErrorCode.SYSTEM_ERROR.getMessage()));
     }
 

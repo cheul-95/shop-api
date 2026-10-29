@@ -57,3 +57,29 @@ public OrderItem(Product product, int quantity, int orderPrice) {
 쓰지 않는 파라미터가 있으면 호출하는 쪽은 그 값이 반영될 거라고 오해한다.
 
 ---
+
+## 3. `@EntityGraph`를 붙이면서 `@JoinColumn`까지 바꿈
+
+**상황**
+N+1을 없애려고 `@EntityGraph(attributePaths = "category")`를 붙이면서 `Product`의 FK 컬럼 이름도 같이 바꿨다.
+
+```diff
+- @JoinColumn(name = "category_id", nullable = false)
++ @JoinColumn(name = "category", nullable = false)
+```
+
+**원인**
+`attributePaths`에는 `category_id`가 아니라 `category`를 넣는다는 설명을 보고, `@JoinColumn`도 같은 기준으로 바꿔야 한다고 생각했다. 두 값은 기준이 다르다.
+- `attributePaths`: 엔티티의 **필드 이름** (`category`)
+- `@JoinColumn(name)`: DB의 **FK 컬럼 이름** (`category_id`)
+
+그대로 두면 `ddl-auto: update`가 product 테이블에 NOT NULL `category` 컬럼을 새로 추가하려고 하고, `category_id`로 넣는 `data.sql`과도 맞지 않는다.
+
+**해결**
+`@JoinColumn(name = "category_id")`로 되돌렸다. 바뀐 컬럼으로 앱을 실행한 적이 있으면 로컬 DB에 `category` 컬럼이 남아 있을 수 있으니 테이블을 확인한다.
+
+**배운 점**
+- JPA 어노테이션 값이 **자바(엔티티/필드) 기준**인지 **DB(테이블/컬럼) 기준**인지 구분한다. JPQL, `attributePaths`, `mappedBy`는 자바 기준이고 `@Table`, `@Column`, `@JoinColumn`은 DB 기준이다.
+- 하려는 수정과 상관없는 파일이 바뀌었으면 커밋 전에 `git diff`로 확인한다.
+
+---
