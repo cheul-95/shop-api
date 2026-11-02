@@ -83,3 +83,36 @@ N+1을 없애려고 `@EntityGraph(attributePaths = "category")`를 붙이면서 
 - 하려는 수정과 상관없는 파일이 바뀌었으면 커밋 전에 `git diff`로 확인한다.
 
 ---
+
+## 4. 로그인 응답에 비밀번호 해시가 나감
+
+**상황**
+회원가입/로그인 응답 DTO를 `Member`의 필드를 그대로 옮겨서 만들었다.
+
+```java
+public record AuthResponse(String email, String password, String name) {
+    public static AuthResponse from(Member member) {
+        return new AuthResponse(member.getEmail(), member.getPassword(), member.getName());
+    }
+}
+```
+
+가입/로그인 응답에 `"password":"$2a$10$..."`가 그대로 들어갔다.
+
+**원인**
+"엔티티 대신 DTO로 응답한다"는 것만 지키고, DTO에 어떤 필드를 담을지는 따져보지 않았다. DTO가 엔티티 필드를 그대로 복사하면 엔티티를 응답하는 것과 노출 범위가 같다.
+
+BCrypt 해시는 복호화가 안 되지만, 노출되면 오프라인에서 무차별 대입 공격을 할 수 있다. 응답 로그, 브라우저 개발자 도구, 프록시 등 여러 곳에 남기도 한다.
+
+**해결**
+`AuthResponse`에서 `password`를 뺐다.
+
+```java
+public record AuthResponse(String email, String name) { ... }
+```
+
+**배운 점**
+- 응답 DTO는 엔티티 기준이 아니라 **클라이언트가 필요한 값** 기준으로 필드를 고른다.
+- 앱을 띄워 실제 응답 JSON을 한 번은 눈으로 확인한다.
+
+---
