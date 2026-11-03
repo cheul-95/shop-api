@@ -8,8 +8,10 @@ import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
 import java.time.Duration;
@@ -48,5 +50,13 @@ public class JwtProvider {
 
     public Claims parse(String token) {
         return parser.parseSignedClaims(token).getPayload();
+    }
+
+    public String resolveToken(HttpServletRequest servletRequest) {
+        String bearerToken = servletRequest.getHeader("Authorization");
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7); // "Bearer " 이후의 순수 토큰 값 반환
+        }
+        return null;
     }
 }
