@@ -116,3 +116,37 @@ public record AuthResponse(String email, String name) { ... }
 - 앱을 띄워 실제 응답 JSON을 한 번은 눈으로 확인한다.
 
 ---
+
+## 5. 다른 키 테스트에서 예외가 안 남
+
+**상황**
+"다른 키로 서명된 토큰은 거부한다"는 테스트가 실패했다.
+
+```java
+JwtProvider otherJwtProvider = new JwtProvider(OTHER_SECRET, 3_600_000);
+String accessToken = otherJwtProvider.createAccessToken(1L, Role.USER);
+assertThatThrownBy(() -> otherJwtProvider.parse(accessToken))
+        .isInstanceOf(SignatureException.class);
+```
+
+```
+Expecting code to raise a throwable.
+```
+
+**원인**
+토큰을 만든 Provider와 검증한 Provider가 같았다. 서명한 키와 검증한 키가 같으니 정상 토큰으로 통과했다.
+
+**해결**
+다른 키로 **만들고**, 우리 서버의 키(`jwtProvider`)로 **검증**하게 바꿨다.
+
+```java
+String otherAccessToken = otherJwtProvider.createAccessToken(1L, Role.USER);
+assertThatThrownBy(() -> jwtProvider.parse(otherAccessToken))
+        .isInstanceOf(SignatureException.class);
+```
+
+**배운 점**
+- 테스트가 어떤 상황을 흉내 내는지 먼저 정한다. 이 테스트는 "누군가 자기 키로 위조한 토큰을 보냈다"는 상황이다. 위조한 쪽과 검증하는 쪽은 서로 달라야 한다.
+- `Expecting code to raise a throwable`는 예외가 **아예 안 났다**는 뜻이다. 예외 종류가 틀렸을 때(`but was:`)와 구분한다.
+
+---
