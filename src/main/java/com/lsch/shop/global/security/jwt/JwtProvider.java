@@ -1,6 +1,10 @@
 package com.lsch.shop.global.security.jwt;
 
 import com.lsch.shop.domain.member.entity.Role;
+import com.lsch.shop.global.error.ErrorCode;
+import com.lsch.shop.global.error.exception.BusinessException;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -16,11 +20,13 @@ public class JwtProvider {
 
     private final SecretKey key;
     private final long accessTokenExpiration;   // ms
+    private final JwtParser parser;
 
     public JwtProvider(@Value("${jwt.secret}") String secret,
                        @Value("${jwt.access-token.expiration}") long accessTokenExpiration) {
         this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
         this.accessTokenExpiration = accessTokenExpiration;
+        this.parser = Jwts.parser().verifyWith(key).build();
     }
 
     public String createAccessToken(Long memberId, Role role) {
@@ -36,6 +42,11 @@ public class JwtProvider {
     }
 
     public long getAccessTokenExpirationSeconds() {
+
         return Duration.ofMillis(accessTokenExpiration).toSeconds();
+    }
+
+    public Claims parse(String token) {
+        return parser.parseSignedClaims(token).getPayload();
     }
 }

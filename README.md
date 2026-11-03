@@ -80,14 +80,29 @@ erDiagram
 ## 실행 방법
 
 ```bash
-# 1. DB 실행 (localhost:3308, 외부 네트워크에서는 접속 불가)
+# 1. .env 생성 후 JWT_SECRET 채우기 (값 생성: openssl rand -base64 48)
+cp .env.example .env
+
+# 2. DB 실행 (localhost:3308, 외부 네트워크에서는 접속 불가)
 docker compose up -d
 
-# 2. 애플리케이션 실행 (기본 프로필: local)
+# 3. 애플리케이션 실행 (기본 프로필: local)
 ./gradlew bootRun
 ```
 
 - Swagger UI: http://localhost:8080/swagger-ui.html
+
+### JWT secret 설정
+
+`application-local.yml`은 프로젝트 루트의 `.env`를 읽습니다(`spring.config.import: optional:file:.env[.properties]`). `.env`는 git에 올리지 않고, 필요한 키는 [`.env.example`](.env.example)에 정리했습니다.
+
+| 환경변수 | 설명 | 기본값 |
+|---|---|---|
+| `JWT_SECRET` | HS256 서명 키. Base64 문자열이고, 디코딩하면 32바이트 이상이어야 합니다 | 없음 (값이 없으면 기동 실패) |
+
+- `.env` 대신 OS 환경변수나 IDE 실행 설정으로 `JWT_SECRET`을 넣어도 됩니다.
+- `.env`는 실행할 때의 작업 디렉터리를 기준으로 찾습니다. 프로젝트 루트에서 실행하세요.
+- 테스트는 `.env`가 필요 없습니다. `application-test.yml`에 테스트 전용 secret이 들어 있습니다.
 
 ### DB 접속 정보 변경
 
