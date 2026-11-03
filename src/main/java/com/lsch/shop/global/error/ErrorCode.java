@@ -17,7 +17,12 @@ public enum ErrorCode {
     ALREADY_CANCELED_ORDER(HttpStatus.BAD_REQUEST, "이미 취소된 주문입니다"),
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
     DUPLICATE_EMAIL(HttpStatus.CONFLICT,"중복된 이메일 입니다."),
-    FAIL_LOGIN(HttpStatus.UNAUTHORIZED,"로그인에 실패하셨습니다.이메일/비밀번호를 확인해주세요.");
+    FAIL_LOGIN(HttpStatus.UNAUTHORIZED,"로그인에 실패하셨습니다.이메일/비밀번호를 확인해주세요."),
+    EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED,"로그인이 만료되었습니다. 다시 로그인해 주세요."),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED,"유효한 토큰이 아닙니다. 다시 시도해주세요."),
+    MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND,"회원을 확인 할 수 없습니다."),
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED,"로그인이 필요합니다."),
+    FORBIDDEN(HttpStatus.FORBIDDEN,"접근 권한이 없습니다.");
 
     private final HttpStatus status;
     private final String message;

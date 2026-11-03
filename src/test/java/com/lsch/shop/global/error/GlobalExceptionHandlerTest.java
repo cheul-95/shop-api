@@ -2,6 +2,9 @@ package com.lsch.shop.global.error;
 
 import com.lsch.shop.global.config.SecurityConfig;
 import com.lsch.shop.global.error.exception.BusinessException;
+import com.lsch.shop.global.security.handler.JwtAccessDeniedHandler;
+import com.lsch.shop.global.security.handler.JwtAuthenticationEntryPoint;
+import com.lsch.shop.global.security.jwt.JwtProvider;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.Test;
@@ -9,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,11 +26,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(GlobalExceptionHandlerTest.TestController.class)
-@Import({GlobalExceptionHandlerTest.TestController.class, SecurityConfig.class})
+@Import({JwtAuthenticationEntryPoint.class, JwtAccessDeniedHandler.class, GlobalExceptionHandlerTest.TestController.class, SecurityConfig.class})
+@WithMockUser
 class GlobalExceptionHandlerTest {
 
     @Autowired
     MockMvc mockMvc;
+
+    @MockitoBean
+    private JwtProvider jwtProvider;
 
     @Test
     void 비즈니스_예외는_ErrorCode의_상태와_메시지로_응답한다() throws Exception {

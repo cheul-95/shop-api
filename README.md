@@ -66,8 +66,11 @@ erDiagram
 | GET | `/api/products/{id}` | 상품 상세 (없으면 404 `PRODUCT_NOT_FOUND`) | X |
 | POST | `/api/auth/signup` | 회원가입 (201, 중복 이메일이면 409 `DUPLICATE_EMAIL`) | X |
 | POST | `/api/auth/login` | 로그인, `{accessToken, tokenType, expiresIn}` 반환 (실패 시 401 `FAIL_LOGIN`) | X |
+| GET | `/api/members/me` | 내 정보 조회 `{id, email, name, role}` | O |
 
 에러 응답은 모두 `{"code": "ERROR_CODE", "message": "..."}` 형식입니다.
+
+인증이 필요한 API는 `Authorization: Bearer <accessToken>` 헤더가 필요합니다. 토큰이 없거나 유효하지 않으면 401 `UNAUTHORIZED`, 권한이 부족하면 403 `FORBIDDEN`을 응답합니다.
 
 ## 기술 스택
 
