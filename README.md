@@ -64,6 +64,8 @@ erDiagram
 |---|---|---|---|
 | GET | `/api/products?keyword=&page=&size=&sort=` | 상품 목록 (이름 검색, 페이징, 기본 최신순) | X |
 | GET | `/api/products/{id}` | 상품 상세 (없으면 404 `PRODUCT_NOT_FOUND`) | X |
+| POST | `/api/auth/signup` | 회원가입 (201, 중복 이메일이면 409 `DUPLICATE_EMAIL`) | X |
+| POST | `/api/auth/login` | 로그인 (실패 시 401 `FAIL_LOGIN`) | X |
 
 에러 응답은 모두 `{"code": "ERROR_CODE", "message": "..."}` 형식입니다.
 
