@@ -3,6 +3,7 @@ package com.lsch.shop.domain.auth.controller;
 import com.lsch.shop.domain.auth.dto.AuthResponse;
 import com.lsch.shop.domain.auth.dto.LoginRequest;
 import com.lsch.shop.domain.auth.dto.SignupRequest;
+import com.lsch.shop.domain.auth.dto.TokenResponse;
 import com.lsch.shop.domain.auth.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,8 +25,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request){
-        AuthResponse response = authService.login(request);
+    public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request){
+        TokenResponse response = authService.login(request);
         return ResponseEntity.ok(response);
     }
 }
