@@ -78,7 +78,7 @@ Spring Boot 기반 커머스 백엔드 API
 
 - 비밀번호는 BCrypt 해시로 저장합니다.
 - 로그인할 때 "없는 이메일"과 "틀린 비밀번호"를 같은 401로 응답합니다. 응답만 보고 가입된 이메일을 알아낼 수 없게 하기 위해서입니다(계정 열거 방지).
-- 응답 DTO를 따로 두어 엔티티(비밀번호 해시 포함)가 그대로 노출되지 않게 했습니다. → [트러블슈팅 4](docs/troubleshooting.md)
+- 응답 DTO를 따로 두어 엔티티(비밀번호 해시 포함)가 그대로 노출되지 않게 했습니다. 응답에는 클라이언트가 필요한 값만 담습니다.
 
 ### 5. 일관된 예외 처리 → [01. 공통 코드](docs/01-common-code.md)
 
@@ -236,16 +236,11 @@ OrderService (@Transactional)  ── 트랜잭션 시작 ──
 
 | # | 문제 | 키워드 |
 |---|---|---|
-| 1 | 예외 검증 테스트가 실패함 | `assertThatThrownBy` |
-| 2 | 생성자 파라미터를 받아놓고 무시함 | 엔티티 생성자 |
-| 3 | `@EntityGraph`를 붙이면서 `@JoinColumn`까지 바꿈 | 연관관계 매핑 |
-| 4 | 로그인 응답에 비밀번호 해시가 나감 | 응답 DTO 분리 |
-| 5 | 이름이 같은 다른 패키지의 클래스를 import함 | import |
-| 6 | SecurityConfig에 의존성을 추가하자 `@WebMvcTest`가 깨짐 | 슬라이스 테스트, `@MockitoBean` |
-| 7 | `getById`로 조회한 엔티티에서 `LazyInitializationException` | 프록시, OSIV |
-| 8 | 복사한 테스트가 다른 것을 검증함 | 테스트 이름 · 입력 · 기대값 |
-| 9 | 없는 ID로 `10L`을 쓰면 순서에 따라 깨질 수 있음 | flaky 테스트, AUTO_INCREMENT |
-| 10 | Docker가 꺼져 있어서 통합 테스트가 전부 실패함 | Testcontainers, `Caused by` |
+| 1 | `attributePaths`와 `@JoinColumn`의 기준 차이 (필드 이름 vs 컬럼 이름) | `@EntityGraph`, 연관관계 매핑 |
+| 2 | Jackson 3 / jjwt 0.12 패키지 변경과 같은 이름의 클래스 | Spring Boot 4, 라이브러리 메이저 버전 |
+| 3 | SecurityConfig에 의존성을 추가하자 `@WebMvcTest`가 깨짐 | 슬라이스 테스트, `@MockitoBean` |
+| 4 | `getById`로 조회한 엔티티에서 `LazyInitializationException` | 프록시, OSIV |
+| 5 | 없는 ID로 `10L`을 쓰면 순서에 따라 깨질 수 있음 | flaky 테스트, AUTO_INCREMENT |
 
 ## 실행 방법
 

@@ -135,7 +135,7 @@ return productRepository.findByNameContaining(keyword, pageable).map(ProductResp
 | `@EntityGraph(attributePaths = ...)` | 엔티티의 **필드 이름** | `"category"` |
 | `@JoinColumn(name = ...)` | DB의 **FK 컬럼 이름** | `"category_id"` |
 
-헷갈려서 `@JoinColumn`까지 바꿨다가 되돌렸다. [트러블슈팅 3](troubleshooting.md) 참고.
+헷갈려서 `@JoinColumn`까지 바꿨다가 되돌렸다. [트러블슈팅 1](troubleshooting.md) 참고.
 
 ### 다른 방법: `@Query` + `join fetch`
 

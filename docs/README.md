@@ -13,7 +13,7 @@ Spring Boot / JPA를 미션 단위로 공부하면서 정리한 문서입니다.
 | [05. 회원가입 / 로그인 API](05-auth-api.md) | Bean Validation, BCrypt `PasswordEncoder`, 중복 409, 로그인 실패 401과 계정 열거 방지 | `1358571` |
 | [06. JWT 발급](06-jwt.md) | jjwt 의존성, `.env`로 secret 관리, 키 길이와 알고리즘, 토큰 생성/검증, `TokenResponse`, `JwtProviderTest` | `ebf7be6`, `7cc36ca` |
 | [07. JWT 인증 필터](07-jwt-filter.md) | `OncePerRequestFilter`, SecurityContext, 경로별 인가 규칙, 401/403 JSON(EntryPoint, AccessDeniedHandler), `@AuthenticationPrincipal`, `GET /api/members/me` | `0c9264d` |
-| [08. 주문 생성 API](08-order.md) | `POST /api/orders`, `OrderItem.create`로 재고 차감 강제, 409, `@Transactional` 제거 실험과 dirty checking, OSIV, 통합 테스트에서 `@Transactional`을 빼는 이유, 롤백 테스트의 한계 | - |
+| [08. 주문 생성 API](08-order.md) | `POST /api/orders`, `OrderItem.create`로 재고 차감 강제, 409, `@Transactional` 제거 실험과 dirty checking, OSIV, 통합 테스트에서 `@Transactional`을 빼는 이유, 롤백 테스트의 한계 | `35f0694`, `35c446b` |
 | [트러블슈팅](troubleshooting.md) | 실제로 겪은 오류와 버그, 원인과 해결 | - |
 | [에러 코드와 HTTP 상태](error-codes.md) | 전체 에러 코드 목록, 400/401/403/404/409/500 선택 기준, 예외가 응답이 되는 경로 | - |
 
@@ -31,9 +31,3 @@ Spring Boot / JPA를 미션 단위로 공부하면서 정리한 문서입니다.
 | 5. JWT 발급 | jjwt, secret/만료시간은 yml, `{accessToken, tokenType, expiresIn}` | jwt.io에서 sub, role 확인 / `JwtProviderTest`(정상/만료/다른 키/형식 오류) 통과 | ✅ 완료 (jwt.io에서 HS256, sub, role 확인, `JwtProviderTest` 4개 통과) |
 | 6. JWT 인증 필터 | Bearer 토큰 검증, 경로별 허용/인증, `GET /api/members/me`, 401/403 JSON | 토큰 없이 /me → 401 / 토큰과 함께 → 200 / 상품 조회는 토큰 없이 200 | ✅ 완료 (curl로 401 / 200 / 상품 200 확인, 위조 토큰 401, 전체 테스트 18개 통과. 403은 임시 ADMIN 경로 + USER 토큰으로 확인 후 되돌림) |
 | 🎁 보너스 | `POST /api/orders` 주문 생성 + 재고 차감, 재고 부족 409 | DB 재고 감소 확인, `@Transactional` 제거 시 재고가 안 줄어드는 것 확인 | ✅ 완료 (curl로 주문/409/401/400 확인, DB 재고 10→8·100→99, `@Transactional` 제거 시 주문만 저장되고 재고 그대로, `OrderServiceTest` 5개 포함 전체 23개 통과) |
-
-## 진행 방식
-
-- 미션이 끝날 때마다 리뷰를 받는다.
-- 막히면 단계적으로 도움을 요청한다: **키워드만 → 힌트만 → 이 부분만 코드**
-- 에러가 나면 메시지 전체를 붙여넣고, 원인을 찾는 방법부터 같이 본다.
