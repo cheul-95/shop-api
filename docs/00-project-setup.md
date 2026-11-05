@@ -134,7 +134,18 @@ spring:
 ### default_batch_fetch_size: 100
 
 - 연관된 엔티티를 지연로딩할 때 하나씩 쿼리를 날리지 않고 `IN (?, ?, ...)`으로 최대 100개씩 묶어서 조회한다.
-- N+1 문제를 완화하는 가장 간단한 방법이다.
+- N+1 문제를 완화하는 가장 간단한 방법이다. 예를 들어 주문 100건의 `orderItems`에 접근하면 쿼리가 1 + 100번이 아니라 1 + 1번 나간다.
+
+**왜 100인가**
+
+| 값 | 문제 |
+|---|---|
+| 너무 작게 (예: 10) | 주문 100건이면 IN 쿼리가 10번 나간다. N+1을 줄이는 효과가 약하다 |
+| 너무 크게 (예: 1000 이상) | IN 절이 길어질수록 DB가 파싱하고 실행 계획을 세우는 부담과, 한 번에 메모리로 올리는 데이터가 커진다. DB마다 IN 절 파라미터 개수 제한도 있다(Oracle은 1000개) |
+
+- 보통 100~1000 사이를 권장한다. 100이면 일반적인 페이지 크기(20~100건)를 쿼리 한 번에 처리하면서 IN 절도 부담스럽지 않다.
+- Hibernate는 IN 절 파라미터 개수를 정해진 몇 가지로 맞춰서 쿼리를 만들고, 같은 모양의 쿼리를 재사용한다. 상한이 적당히 작을수록 쿼리 모양이 단순해진다.
+- fetch join은 컬렉션(`@OneToMany`)에 쓰면 페이징을 DB에서 할 수 없다. 그래서 페이징이 필요한 조회는 batch size로 해결한다. [04. 상품 조회 API](04-product-api.md) 참고.
 
 ### SQL 로그
 
@@ -180,6 +191,8 @@ http
 | `/error` 허용 | 안 열어두면 예외 발생 시 에러 응답 대신 401/403이 나가서 원인을 알기 어려움 |
 | `anyRequest().permitAll()` | 아직 JWT 인증이 없어서 임시로 전체 허용 |
 
+> 미션 6에서 `anyRequest().authenticated()`로 바꿨다. [07. JWT 인증 필터](07-jwt-filter.md) 참고.
+
 - Spring Security 의존성만 추가하면 **모든 요청이 막히고** 기본 로그인 화면이 뜬다. 그래서 설정을 바로 만들어야 한다.
 - `PasswordEncoder`(BCrypt)를 빈으로 등록해 뒀다. 회원 비밀번호는 평문이 아니라 해시로 저장한다. (`Member` 생성자의 파라미터 이름이 `encodedPassword`인 이유)
 
@@ -205,6 +218,7 @@ public class TestcontainersConfiguration {
 - `@ServiceConnection`이 컨테이너의 url/username/password를 datasource에 자동으로 연결한다 → `application-test.yml`에 접속 정보가 없는 이유.
 - H2 같은 인메모리 DB 대신 운영과 **같은 MySQL 8.4**로 테스트한다. 문법 차이나 예약어 문제를 테스트 단계에서 잡을 수 있다.
 - Docker만 실행 중이면 되고 `docker compose up`은 필요 없다.
+- Docker Desktop이 꺼져 있으면 DB를 쓰는 테스트가 전부 `Failed to load ApplicationContext`로 실패한다. [트러블슈팅 10](troubleshooting.md) 참고.
 
 ```java
 @SpringBootTest

@@ -201,3 +201,135 @@ class GlobalExceptionHandlerTest {
 - 에러가 겹쳐 있을 때는 단계를 나눠 본다. 첫 에러(컨텍스트 로딩)를 고친 뒤에야 두 번째 에러(401)가 보인다.
 
 ---
+
+## 7. `getById`로 조회한 엔티티에서 `LazyInitializationException`
+
+**상황**
+`OrderServiceTest`에서 주문 후 재고를 확인하려고 `findById` 대신 `getById`를 썼더니 테스트가 실패했다. (`findById`가 `Optional`을 반환해서 `Product`에 바로 대입하면 컴파일 에러가 나자 `getById`로 바꿨다)
+
+```java
+Product product = productRepository.getById(notebookId);
+assertThat(product.getStock()).isEqualTo(97);
+```
+
+```
+org.hibernate.LazyInitializationException:
+  Could not initialize proxy [com.lsch.shop.domain.product.entity.Product#1] - no session
+```
+
+**원인**
+- `getById`(현재 이름은 `getReferenceById`, `getById`는 deprecated)는 DB를 조회하지 않고 **ID만 들고 있는 프록시**를 반환한다. 실제 SELECT는 `getStock()`처럼 필드에 처음 접근할 때 실행된다.
+- 테스트 클래스에 `@Transactional`이 없어서, `getById` 호출이 끝나는 순간 영속성 컨텍스트(세션)가 닫혔다. 그 뒤에 프록시를 초기화하려니 세션이 없었다.
+
+```
+getById(1)  → [트랜잭션 시작 → 프록시 생성(SELECT 없음) → 끝, 세션 닫힘]
+getStock()  → SELECT 하려는데 세션 없음 → LazyInitializationException
+```
+
+**해결**
+`findById`로 바로 조회하고 `Optional`에서 값을 꺼냈다.
+
+```java
+Product product = productRepository.findById(mouseId).orElseThrow();
+```
+
+**배운 점**
+- `findById`: 즉시 SELECT, 진짜 엔티티를 `Optional`로 반환한다. `getReferenceById`: SELECT 없이 프록시를 반환한다. 연관관계에 FK만 넣으면 될 때(예: `orderItem.setProduct(getReferenceById(id))`) 쓰면 SELECT를 아낄 수 있다.
+- `Optional`은 값이 담긴 상자다. `.orElseThrow()`로 꺼내야 안의 메서드를 쓸 수 있다. 테스트에서는 인자 없는 `orElseThrow()`로 충분하다(`NoSuchElementException`).
+- 컴파일 에러를 없애려고 이름이 비슷한 다른 메서드로 바꾸지 않는다. 두 메서드는 동작이 완전히 다르다.
+- 이 프로젝트의 지연 로딩 문제는 대부분 "트랜잭션 밖에서 프록시를 건드렸다"로 정리된다. `open-in-view: false`라서 더 잘 드러난다.
+
+---
+
+## 8. 복사한 테스트가 다른 것을 검증함
+
+**상황**
+재고 부족 테스트를 복사해서 `createOrder_productNotFound_throws`, `createOrder_memberNotFound_throws`를 만들었다.
+
+1. 처음에는 `@Test`를 안 붙였다. 테스트 결과에 3개만 나왔는데 실패가 없어서 문제를 몰랐다.
+2. `@Test`를 붙이고 기대 `ErrorCode`를 `PRODUCT_NOT_FOUND`, `MEMBER_NOT_FOUND`로 바꾸자 2개가 실패했다.
+
+```
+createOrder_productNotFound_throws() FAILED
+  Expecting ... BusinessException: 재고가 부족합니다
+  at Product.decreaseStock(Product.java:49)
+```
+
+**원인**
+- `@Test`가 없는 메서드는 JUnit에게 그냥 일반 메서드라 실행되지 않는다. 실패도 하지 않는다.
+- 기대값만 바꾸고 **입력값(given)은 재고 부족 테스트 그대로**(`mouseId, 101`, 존재하는 회원)였다. 서비스는 정직하게 `OUT_OF_STOCK`을 던졌다.
+- 기대값까지 그대로였다면 테스트는 통과했을 것이다. 이름과 다른 것을 검증하는 테스트가 된다.
+
+**해결**
+- 상품 없음: 상품 ID를 없는 값으로, 회원과 수량은 정상으로
+- 회원 없음: `createOrder`의 첫 번째 인자(회원 ID)를 없는 값으로, 상품과 수량은 정상으로
+
+**배운 점**
+- 테스트 결과에서 **실행된 테스트 개수**를 확인한다. 추가한 테스트가 목록에 있는지 본다.
+- 테스트는 **이름, 입력, 기대값** 세 가지가 서로 맞아야 한다.
+- 테스트 하나에는 **틀린 조건 하나만** 둔다. 상품도 없고 수량도 틀리면 어떤 이유로 실패했는지 흐려진다.
+- 복사한 코드는 바꿀 곳을 하나씩 확인한다. (같은 날 `CategoryRepository`도 `ProductRepository`를 복사하면서 `JpaRepository<Product, Long>`과 `@EntityGraph` 메서드가 그대로 남았다.)
+
+---
+
+## 9. 없는 ID로 `10L`을 쓰면 순서에 따라 깨질 수 있음
+
+**상황**
+상품/회원 없음 테스트에서 "없는 ID"로 `10L`을 썼다. 5개 모두 통과했다.
+
+**원인**
+- `@AfterEach`의 `deleteAll()`은 행만 지우고 **AUTO_INCREMENT는 초기화하지 않는다.**
+- `@BeforeEach`에서 테스트마다 상품을 2개씩 만든다. 1번째 테스트는 상품 ID 1, 2, 2번째는 3, 4 ... 5번째는 9, **10**이다.
+- JUnit은 메서드 실행 순서를 보장하지 않는다. `productNotFound`가 5번째로 실행되면 10번 상품이 **존재**해서 `PRODUCT_NOT_FOUND`가 아니라 다른 결과가 나온다. 회원도 테스트가 10개를 넘으면 같은 문제가 생긴다.
+- 이번에 통과한 건 `productNotFound`가 4번째(상품 ID 7, 8)로 실행됐기 때문이다.
+
+**해결**
+절대 존재할 수 없는 값을 쓴다.
+
+```java
+new OrderItemRequest(Long.MAX_VALUE, 1)
+orderService.createOrder(Long.MAX_VALUE, orderRequest)
+```
+
+- 상품 없음 테스트는 수량도 101에서 1로 바꿨다. 상품 없음과 재고 초과가 섞이지 않도록 틀린 조건을 하나만 둔다([8번](#8-복사한-테스트가-다른-것을-검증함) 배운 점).
+- 수정 후 전체 23개 통과 (2026-11-05).
+
+**배운 점**
+- 코드를 안 바꿨는데 어떤 날은 통과하고 어떤 날은 실패하는 테스트를 **flaky 테스트**라고 한다. 원인을 찾기 어렵다.
+- DB가 만드는 값(ID)에 기대지 않는다. 있는 데이터는 `save` 결과에서 ID를 받고, 없는 데이터는 생길 수 없는 값을 쓴다.
+- 테스트는 서로 독립적이어야 한다. 실행 순서나 다른 테스트가 남긴 상태에 따라 결과가 바뀌면 안 된다.
+
+---
+
+## 10. Docker가 꺼져 있어서 통합 테스트가 전부 실패함
+
+**상황**
+테스트 코드만 고치고 `./gradlew test`를 돌렸더니 `ShopApplicationTests` 1개와 `OrderServiceTest` 5개가 실패했다. 단위 테스트 17개는 통과했다.
+
+```
+java.lang.IllegalStateException: Failed to load ApplicationContext
+...
+java.lang.IllegalStateException: ApplicationContext failure threshold (1) exceeded: skipping repeated attempt to load context
+```
+
+**원인**
+- 맨 아래 `Caused by`를 보면 진짜 원인이 있다.
+
+```
+Caused by: ... Error creating bean with name 'mysqlContainer' defined in class path resource [com/lsch/shop/TestcontainersConfiguration.class]:
+Could not find a valid Docker environment
+```
+
+- Testcontainers가 테스트용 MySQL 컨테이너를 띄우려 했지만 **Docker Desktop이 꺼져 있었다.** DB를 만들지 못해 `dataSource` → `entityManagerFactory` 순서로 빈 생성이 실패했고, 스프링 컨텍스트가 뜨지 못했다.
+- 두 번째 메시지(`failure threshold exceeded`)는 "같은 설정의 컨텍스트가 이미 한 번 실패했으니 다시 시도하지 않는다"는 뜻이다. 원인은 첫 번째 실패에 있다.
+- `@SpringBootTest` 테스트만 실패하고 엔티티 단위 테스트는 통과한 것도 단서다. 스프링이나 DB가 필요 없는 테스트는 Docker와 상관이 없다.
+
+**해결**
+Docker Desktop을 켜고 엔진이 실행 중인지 확인한 뒤 다시 실행했다. 23개 모두 통과.
+
+**배운 점**
+- 스택트레이스는 **가장 아래쪽 `Caused by`**부터 읽는다. 위쪽은 결과이고 아래쪽이 원인이다.
+- 많은 테스트가 같은 이유로 한꺼번에 깨지면 코드보다 **환경**(Docker, DB, 포트, 환경변수)을 먼저 의심한다.
+- 테스트 보고서는 `build/test-results/test/*.xml`이나 `build/reports/tests/test/index.html`에서 볼 수 있다.
+
+---

@@ -225,7 +225,7 @@ public MemberResponse getMe(Long memberId) {
 - [x] 토큰 없이 `/me` → 401
 - [x] 토큰과 함께 `/me` → 200
 - [x] 상품 조회는 토큰 없이 200
-- [ ] 403 JSON: ADMIN 전용 경로가 없어서 실제 요청으로는 아직 확인하지 않았다. 확인하려면 `requestMatchers("/api/admin/**").hasRole("ADMIN")`을 잠깐 추가하고 USER 토큰으로 호출한다.
+- [x] 403 JSON: ADMIN 전용 경로가 없어서 `requestMatchers("/api/admin/**").hasRole("ADMIN")`을 잠깐 추가하고 USER 토큰으로 호출해 403 JSON 응답을 확인했다. 확인한 뒤 임시 규칙은 되돌렸다.
 
 ## 8. 남은 것
 

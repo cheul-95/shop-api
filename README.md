@@ -67,6 +67,7 @@ erDiagram
 | POST | `/api/auth/signup` | 회원가입 (201, 중복 이메일이면 409 `DUPLICATE_EMAIL`) | X |
 | POST | `/api/auth/login` | 로그인, `{accessToken, tokenType, expiresIn}` 반환 (실패 시 401 `FAIL_LOGIN`) | X |
 | GET | `/api/members/me` | 내 정보 조회 `{id, email, name, role}` | O |
+| POST | `/api/orders` | 주문 생성 + 재고 차감 (201, 재고 부족 409 `OUT_OF_STOCK`, 상품/회원 없음 404) | O |
 
 에러 응답은 모두 `{"code": "ERROR_CODE", "message": "..."}` 형식입니다.
 
