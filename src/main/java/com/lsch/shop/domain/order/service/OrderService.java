@@ -40,7 +40,7 @@ public class OrderService {
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
-        List<Product> products = productRepository.findAllById(productIds);
+        List<Product> products = productRepository.findAllByIdForUpdate(productIds);
 
         if (products.size() != productIds.size()) {
             throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND);
