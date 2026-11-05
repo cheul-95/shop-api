@@ -21,7 +21,6 @@
 | 400 | `INVALID_INPUT` | 입력값이 올바르지 않습니다. | `GlobalExceptionHandler` | `@Valid` 검증 실패 (`MethodArgumentNotValidException`) |
 | 400 | `INVALID_JSON` | 요청 형식이 올바르지 않습니다. | `GlobalExceptionHandler` | JSON 문법 오류, 타입 불일치 (`HttpMessageNotReadableException`) |
 | 400 | `INVALID_QUANTITY` | 수량은 1 이상이어야 합니다 | `Product.decreaseStock`, `increaseStock` | 수량 0 이하. API에서는 `@Min(1)`이 먼저 막아서 `INVALID_INPUT`이 나가고, 이 코드는 API를 거치지 않는 경로를 지킨다 |
-| 400 | `ALREADY_CANCELED_ORDER` | 이미 취소된 주문입니다 | `Order.cancel` | 취소된 주문을 다시 취소 (취소 API는 아직 없음) |
 | 401 | `UNAUTHORIZED` | 로그인이 필요합니다. | `JwtAuthenticationEntryPoint` | 인증이 필요한 API에 토큰이 없거나 유효하지 않음 |
 | 401 | `FAIL_LOGIN` | 로그인에 실패하셨습니다. ... | `AuthService.login` | 없는 이메일 **또는** 틀린 비밀번호 (둘을 구분하지 않음) |
 | 401 | `EXPIRED_TOKEN` | 로그인이 만료되었습니다. ... | - | **미사용.** 만료 토큰도 지금은 `UNAUTHORIZED` |
@@ -33,6 +32,7 @@
 | 405 | `METHOD_NOT_ALLOWED` | 지원하지 않는 HTTP 메서드입니다. | `GlobalExceptionHandler` | 예: `DELETE /api/products` |
 | 409 | `DUPLICATE_EMAIL` | 중복된 이메일 입니다. | `AuthService.signup` | 이미 가입된 이메일로 회원가입 |
 | 409 | `OUT_OF_STOCK` | 재고가 부족합니다 | `Product.decreaseStock` | 주문 수량이 재고보다 많음 |
+| 409 | `ALREADY_CANCELED_ORDER` | 이미 취소된 주문입니다 | `Order.cancel` | 취소된 주문을 다시 취소 (취소 API는 아직 없음) |
 | 500 | `SYSTEM_ERROR` | 시스템 에러입니다. | `GlobalExceptionHandler` | 위에서 처리하지 못한 모든 예외. 서버에 `log.error`로 스택트레이스를 남김 |
 
 ## 3. 상태 코드를 고른 기준
@@ -69,6 +69,7 @@
 - 요청 형식은 문제가 없는데 **지금 서버 상태 때문에** 처리할 수 없는 경우다. 상태가 바뀌면 같은 요청이 성공할 수 있다.
 - `DUPLICATE_EMAIL`: 같은 이메일이 이미 있음
 - `OUT_OF_STOCK`: 미션 2에서는 400이었는데 보너스 미션에서 409로 바꿨다. 재고가 있을 때는 같은 요청이 성공하기 때문이다. → [08. 주문 생성 API](08-order.md)
+- `ALREADY_CANCELED_ORDER`: 처음에는 400이었다. `OUT_OF_STOCK`을 409로 바꿀 때 같은 기준을 적용하지 못한 채 남아 있었고, 이 문서를 정리하면서 발견해 409로 맞췄다. 주문이 "이미 취소됨"이라는 현재 상태와 충돌하는 경우이기 때문이다.
 
 ### 201 Created (성공이지만 함께 정리)
 
@@ -107,6 +108,5 @@ assertThatThrownBy(() -> ...)
 
 ## 6. 검토할 것
 
-- `ALREADY_CANCELED_ORDER`는 지금 400이다. "이미 취소된 상태와 충돌"이라고 보면 `OUT_OF_STOCK`과 같은 이유로 409가 더 일관된다. 주문 취소 API를 만들 때 정한다.
 - `EXPIRED_TOKEN`, `INVALID_TOKEN`은 만들어 두었지만 쓰지 않는다. 필터에서 실패 이유를 request attribute에 담고, EntryPoint에서 꺼내서 구분하는 방법이 있다.
 - `@PathVariable` 타입 불일치(`/api/products/abc`)는 전용 핸들러가 없어서 지금은 500으로 갈 수 있다. 확인 후 400으로 처리할지 정한다.

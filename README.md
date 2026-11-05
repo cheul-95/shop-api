@@ -207,7 +207,7 @@ OrderService (@Transactional)  ── 트랜잭션 시작 ──
 | 401 | `UNAUTHORIZED`, `FAIL_LOGIN` |
 | 403 | `FORBIDDEN` |
 | 404 | `PRODUCT_NOT_FOUND`, `MEMBER_NOT_FOUND`, `NOT_FOUND` |
-| 409 | `DUPLICATE_EMAIL`, `OUT_OF_STOCK` |
+| 409 | `DUPLICATE_EMAIL`, `OUT_OF_STOCK`, `ALREADY_CANCELED_ORDER` |
 | 500 | `SYSTEM_ERROR` |
 
 전체 에러 코드, 발생 위치, 상태 코드를 고른 기준(400 vs 409, 401 vs 403): [docs/error-codes.md](docs/error-codes.md)
