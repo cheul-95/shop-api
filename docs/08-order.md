@@ -196,7 +196,7 @@ orderRepository.save(order)    → [트랜잭션B: INSERT orders, order_item →
 | `createOrder_productNotFound_throws` | 없는 상품 ID(`Long.MAX_VALUE`), 수량 1 → `PRODUCT_NOT_FOUND` |
 | `createOrder_memberNotFound_throws` | 없는 회원 ID(`Long.MAX_VALUE`) → `MEMBER_NOT_FOUND` |
 
-전체 23개 통과. Docker Desktop이 실행 중이어야 한다([트러블슈팅 10](troubleshooting.md)).
+전체 23개 통과. Docker Desktop이 실행 중이어야 한다([00. 초기 세팅](00-project-setup.md)의 Testcontainers).
 
 ### 테스트 클래스에 `@Transactional`을 붙이지 않은 이유
 
@@ -224,7 +224,7 @@ order_item ──▶ orders ──▶ member
 
 - `create-drop`이라 테스트 DB는 빈 상태이고, `data.sql`은 `local` 프로필에서만 실행된다. 회원·카테고리·상품을 직접 저장한다.
 - `Product → Category`에는 cascade가 없어서 카테고리를 먼저 저장해야 한다. 안 하면 `TransientPropertyValueException`.
-- `deleteAll()`은 AUTO_INCREMENT를 초기화하지 않는다. ID를 `1L`처럼 고정하지 말고 `save` 결과의 `getId()`를 필드에 담아 쓴다. 없는 데이터는 생길 수 없는 값(`Long.MAX_VALUE`)을 쓴다. 처음에 `10L`을 썼다가 실행 순서에 따라 깨질 수 있는 걸 발견해서 고쳤다. [트러블슈팅 9](troubleshooting.md) 참고.
+- `deleteAll()`은 AUTO_INCREMENT를 초기화하지 않는다. ID를 `1L`처럼 고정하지 말고 `save` 결과의 `getId()`를 필드에 담아 쓴다. 없는 데이터는 생길 수 없는 값(`Long.MAX_VALUE`)을 쓴다. 처음에 `10L`을 썼다가 실행 순서에 따라 깨질 수 있는 걸 발견해서 고쳤다. [트러블슈팅 5](troubleshooting.md) 참고.
 
 ### 롤백 테스트는 `@Transactional` 없이도 통과한다
 

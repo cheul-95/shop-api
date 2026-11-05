@@ -218,7 +218,7 @@ public class TestcontainersConfiguration {
 - `@ServiceConnection`이 컨테이너의 url/username/password를 datasource에 자동으로 연결한다 → `application-test.yml`에 접속 정보가 없는 이유.
 - H2 같은 인메모리 DB 대신 운영과 **같은 MySQL 8.4**로 테스트한다. 문법 차이나 예약어 문제를 테스트 단계에서 잡을 수 있다.
 - Docker만 실행 중이면 되고 `docker compose up`은 필요 없다.
-- Docker Desktop이 꺼져 있으면 DB를 쓰는 테스트가 전부 `Failed to load ApplicationContext`로 실패한다. [트러블슈팅 10](troubleshooting.md) 참고.
+- Docker Desktop이 꺼져 있으면 DB를 쓰는 테스트가 전부 `Failed to load ApplicationContext`로 실패한다. 맨 아래 `Caused by`에 `Could not find a valid Docker environment`가 있으면 Docker부터 켠다.
 
 ```java
 @SpringBootTest

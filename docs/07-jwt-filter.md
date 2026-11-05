@@ -173,7 +173,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 - 상태 코드를 `SC_UNAUTHORIZED`로 직접 쓰지 않고 `ErrorCode`에서 꺼냈다. 상태와 본문을 `ErrorCode` 한곳에서 관리한다.
 - `ErrorResponse.of(...)`를 재사용해서 `GlobalExceptionHandler`와 같은 `{"code", "message"}` 형식으로 나간다.
 - `objectMapper.writeValue(writer, 객체)`는 writer에 직접 쓰고 `void`를 반환한다. 문자열이 필요하면 `writeValueAsString`이다.
-- **Spring Boot 4는 Jackson 3다.** 빈으로 등록되는 건 `tools.jackson.databind.json.JsonMapper`이고, `com.fasterxml.jackson.databind.ObjectMapper`(Jackson 2)를 주입받으려 하면 앱이 시작하지 않는다. [트러블슈팅 5](troubleshooting.md) 참고.
+- **Spring Boot 4는 Jackson 3다.** 빈으로 등록되는 건 `tools.jackson.databind.json.JsonMapper`이고, `com.fasterxml.jackson.databind.ObjectMapper`(Jackson 2)를 주입받으려 하면 앱이 시작하지 않는다. [트러블슈팅 2](troubleshooting.md) 참고.
 
 ### 아직 구분하지 않는 것
 
@@ -201,13 +201,13 @@ public MemberResponse getMe(Long memberId) {
 - **`@AuthenticationPrincipal`**은 필터에서 `UsernamePasswordAuthenticationToken`의 **첫 번째 인자**로 넣은 값을 꺼내 준다. `SecurityContextHolder.getContext().getAuthentication().getPrincipal()`을 대신 해준다.
   - import는 `org.springframework.security.core.annotation.AuthenticationPrincipal`이다. `...security.web.bind.annotation`의 같은 이름은 deprecated다.
   - 필터에서 넣은 타입과 **파라미터 타입이 다르면 예외 없이 `null`**이 들어온다.
-- `MemberResponse(id, email, name, role)`: `password`는 넣지 않았다. [트러블슈팅 4](troubleshooting.md) 참고.
+- `MemberResponse(id, email, name, role)`: `password`는 넣지 않았다. 응답 DTO는 클라이언트가 필요한 값만 고른다.
 - 토큰은 유효한데 회원이 DB에 없으면(탈퇴, DB 초기화) **404 `MEMBER_NOT_FOUND`**로 했다. 401("이 토큰은 더 이상 유효한 사용자를 가리키지 않는다")로 보는 방법도 있다. 기존 `ProductService.getProduct()`와 같은 패턴으로 가려고 404를 골랐다. 이 예외는 컨트롤러 안에서 나므로 `GlobalExceptionHandler`가 정상적으로 잡는다.
 - 처음에는 `MemberRepository`에 `default Member getById(Long id)`를 만들어 `orElseThrow`를 넣었다. 그런데 `JpaRepository`에 이미 `getById`(deprecated, 지금은 `getReferenceById`)가 있어서 **그 메서드를 덮어쓰게 됐고** deprecated 경고가 났다. "없으면 어떤 에러인지"는 비즈니스 규칙이라 Service로 옮겼다.
 
 ## 6. 기존 테스트에 생긴 영향
 
-`SecurityConfig`가 `JwtProvider`와 두 핸들러를 생성자로 받게 되면서 `GlobalExceptionHandlerTest`(`@WebMvcTest`) 6개가 깨졌다. `@MockitoBean JwtProvider`, 핸들러 `@Import`, `@WithMockUser`로 고쳤다. [트러블슈팅 6](troubleshooting.md) 참고.
+`SecurityConfig`가 `JwtProvider`와 두 핸들러를 생성자로 받게 되면서 `GlobalExceptionHandlerTest`(`@WebMvcTest`) 6개가 깨졌다. `@MockitoBean JwtProvider`, 핸들러 `@Import`, `@WithMockUser`로 고쳤다. [트러블슈팅 3](troubleshooting.md) 참고.
 
 ## 7. 완료 조건 확인
 
