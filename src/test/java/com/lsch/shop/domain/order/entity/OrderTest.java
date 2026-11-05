@@ -15,35 +15,25 @@ class OrderTest {
     @Test
     void create_calculatesTotalPrice() {
         Member member = new Member("test@test.com", "test", "테스터");
-
         Category category = new Category("전자제품");
-
         Product noteBook = new Product("노트북", category, 1000000, 100);
         Product mouse = new Product("마우스", category, 30000, 100);
-
         OrderItem notebookItem = OrderItem.create(noteBook, 2);
         OrderItem mouseItem = OrderItem.create(mouse, 1);
-
         Order order = Order.create(member, notebookItem, mouseItem);
-
         assertThat(order.getTotalPrice()).isEqualTo(2_030_000);
         assertThat(order.getItems()).hasSize(2);
         assertThat(notebookItem.getOrder()).isEqualTo(order);   // 양방향 연결 확인
         assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.PENDING);
         assertThat(noteBook.getStock()).isEqualTo(98);
-
-
     }
     @Test
     void cancel_restoresStock() {
 
         Member member = new Member("test@test.com", "test", "테스터");
-
         Category category = new Category("전자제품");
-
         Product noteBook = new Product("노트북", category, 1000000, 100);
         Product mouse = new Product("마우스", category, 30000, 100);
-
         OrderItem notebookItem = OrderItem.create(noteBook, 2);
         OrderItem mouseItem = OrderItem.create(mouse, 1);
 

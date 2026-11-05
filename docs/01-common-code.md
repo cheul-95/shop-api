@@ -110,6 +110,23 @@ public class BusinessException extends RuntimeException {
 
 비즈니스 예외는 대부분 "요청 실패 → 롤백 → 에러 응답"으로 끝난다.
 메서드마다 `throws`를 붙일 필요가 없고 롤백도 자동으로 되는 `RuntimeException`이 맞다.
+(보너스 미션의 `createOrder_partialOutOfStock_rollsBackAll`이 이 롤백 동작에 기대고 있다. [08. 주문 생성 API](08-order.md))
+
+### BusinessException과 일반 RuntimeException의 차이
+
+둘은 별개가 아니라 부모와 자식 관계다. 차이는 **누가 언제 던지고, 어떻게 처리하느냐**에 있다.
+
+| | 일반 `RuntimeException` | `BusinessException` |
+|---|---|---|
+| 의미 | **예상하지 못한** 오류 (NPE, 잘못된 인덱스 접근, 코드 버그) | **예상한** 규칙 위반 (재고 부족, 상품 없음, 중복 이메일) |
+| 가진 정보 | 메시지, 스택트레이스 | 추가로 `ErrorCode` (HTTP 상태, 코드, 메시지) |
+| 받는 핸들러 | `@ExceptionHandler(Exception.class)` | `@ExceptionHandler(BusinessException.class)` |
+| 응답 | 500 `SYSTEM_ERROR` + `log.error`로 스택트레이스 기록 | `ErrorCode`에 정한 상태(404, 409 등)와 메시지 |
+
+- `RuntimeException` 전용 핸들러는 없다. 그래서 일반 런타임 예외는 `Exception` 핸들러로 떨어진다.
+- 예상한 실패는 클라이언트가 알아야 할 정상적인 응답이라 로그를 남기지 않는다. 예상하지 못한 오류는 서버 로그에만 자세히 남기고, 클라이언트에는 내부 정보가 새지 않게 500만 준다.
+
+**한 줄 정리**: `BusinessException`은 `RuntimeException`을 상속한 커스텀 예외다. 예상 가능한 도메인 규칙 위반을 `ErrorCode`와 함께 던져서 의미 있는 상태 코드로 응답한다. 그 외 예상하지 못한 예외는 500으로 처리하고 로그를 남긴다.
 
 ## 4. ErrorResponse: 에러 응답 형식
 
@@ -131,7 +148,28 @@ public record ErrorResponse(String code, String message) {
 
 - Java 16+ 문법. 필드, 생성자, getter(`code()`), `equals`/`hashCode`/`toString`을 자동으로 만들어 준다.
 - 값이 바뀌지 않는(불변) 데이터 전달용 객체에 적합하다. 응답 DTO에 잘 맞는다.
-- Lombok의 `@Value`와 비슷하지만 자바 기본 문법이다.
+- Lombok의 `@Value`와 비슷하지만 자바 기본 문법이다. PHP 8.2의 `readonly class` + 생성자 프로모션과 거의 같다.
+
+### record / interface / class / enum을 고르는 기준
+
+이 프로젝트는 **역할**에 따라 나눴다.
+
+| 종류 | 쓰는 곳 | 이유 |
+|---|---|---|
+| `record` | 모든 DTO (`OrderRequest`, `ProductResponse`, `ErrorResponse` 등) | 데이터를 담아서 옮기기만 한다. 불변이고 로직이 없다 |
+| `interface` | 모든 Repository (`OrderRepository` 등) | 구현은 Spring Data JPA가 런타임에 프록시로 만들어 준다 |
+| `class` | Entity, Service, Controller, Config, Filter, `BusinessException` | 상태 변경, 로직, 상속이 필요하다 |
+| `enum` | `Role`, `OrderStatus`, `ErrorCode` | 정해진 값의 목록이다 |
+
+- **record (DTO)**: 필드가 `private final`이고 생성자, getter, `equals/hashCode/toString`이 자동으로 생긴다. Jackson이 생성자로 역직렬화하고, `@NotNull` 같은 검증 어노테이션도 컴포넌트에 바로 붙는다.
+- **interface (Repository)**: `JpaRepository`를 상속해서 메서드를 선언만 한다. 애플리케이션이 시작될 때 Spring Data가 구현체를 만들어 빈으로 등록하고, `findByEmail`처럼 메서드 이름으로 쿼리도 만든다.
+- **class**
+  - **Entity는 record로 만들 수 없다.** JPA는 기본 생성자로 객체를 만들고 필드를 채우는데, record는 기본 생성자가 없고 필드가 final이다. 지연 로딩용 프록시는 엔티티를 **상속**해서 만드는데, record는 `final`이라 상속할 수 없다. `product.decreaseStock()`처럼 상태가 바뀌어야 dirty checking이 동작한다.
+  - **Service, Controller**: 의존성을 주입받는다. `@Transactional`이 붙으면 Spring이 클래스를 상속(CGLIB)한 프록시를 만든다.
+  - **BusinessException**: `RuntimeException`을 상속해야 한다. record는 다른 클래스를 상속할 수 없다(interface 구현만 된다).
+- **enum**: 문자열 상수보다 타입이 안전하고 오타가 컴파일 때 잡힌다. `ErrorCode`처럼 상수마다 필드(상태, 메시지)를 붙일 수 있다.
+
+**한 줄 정리**: DTO는 불변 데이터 전달용이라 record, Repository는 Spring Data가 구현체를 만들어 주니 interface로 만들었다. Entity는 JPA가 기본 생성자, 프록시 상속, dirty checking을 써야 해서 class로 만들었다.
 
 ### 정적 팩토리 메서드 `of()`
 
