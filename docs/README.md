@@ -15,6 +15,9 @@ Spring Boot / JPA를 미션 단위로 공부하면서 정리한 문서입니다.
 | [07. JWT 인증 필터](07-jwt-filter.md) | `OncePerRequestFilter`, SecurityContext, 경로별 인가 규칙, 401/403 JSON(EntryPoint, AccessDeniedHandler), `@AuthenticationPrincipal`, `GET /api/members/me` | `0c9264d` |
 | [08. 주문 생성 API](08-order.md) | `POST /api/orders`, `OrderItem.create`로 재고 차감 강제, 409, `@Transactional` 제거 실험과 dirty checking, OSIV, 통합 테스트에서 `@Transactional`을 빼는 이유, 롤백 테스트의 한계 | - |
 | [트러블슈팅](troubleshooting.md) | 실제로 겪은 오류와 버그, 원인과 해결 | - |
+| [에러 코드와 HTTP 상태](error-codes.md) | 전체 에러 코드 목록, 400/401/403/404/409/500 선택 기준, 예외가 응답이 되는 경로 | - |
+
+작업 규칙(브랜치, 커밋 메시지, PR): [CONTRIBUTING.md](../CONTRIBUTING.md)
 
 ## 미션 로드맵
 

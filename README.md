@@ -210,6 +210,8 @@ OrderService (@Transactional)  ── 트랜잭션 시작 ──
 | 409 | `DUPLICATE_EMAIL`, `OUT_OF_STOCK` |
 | 500 | `SYSTEM_ERROR` |
 
+전체 에러 코드, 발생 위치, 상태 코드를 고른 기준(400 vs 409, 401 vs 403): [docs/error-codes.md](docs/error-codes.md)
+
 ## 테스트
 
 ```bash
@@ -312,6 +314,9 @@ docker compose up -d
 | [06. JWT 발급](docs/06-jwt.md) | secret 관리, 키 길이와 알고리즘, 토큰 생성/검증 |
 | [07. JWT 인증 필터](docs/07-jwt-filter.md) | `OncePerRequestFilter`, 경로별 인가, 401/403 JSON |
 | [08. 주문 생성 API](docs/08-order.md) | `@Transactional` 제거 실험, dirty checking, OSIV, 통합 테스트 설계 |
+| [에러 코드와 HTTP 상태](docs/error-codes.md) | 전체 에러 코드 목록, 상태 코드 선택 기준, 새 에러 추가 방법 |
+
+브랜치, 커밋 메시지, PR 규칙은 [CONTRIBUTING.md](CONTRIBUTING.md)에 정리했습니다.
 
 ## 앞으로 할 것
 
