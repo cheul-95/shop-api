@@ -16,6 +16,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -77,6 +78,14 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void 경로변수_타입_불일치는_400_INVALID_INPUT() throws Exception {
+        mockMvc.perform(get("/test/type/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_INPUT.name()))
+                .andExpect(jsonPath("$.message").value(ErrorCode.INVALID_INPUT.getMessage()));
+    }
+
+    @Test
     void 예상하지_못한_예외는_500_SYSTEM_ERROR() throws Exception {
         mockMvc.perform(get("/test/unexpected"))
                 .andExpect(status().isInternalServerError())
@@ -94,6 +103,10 @@ class GlobalExceptionHandlerTest {
 
         @PostMapping("/test/validation")
         void validation(@Valid @RequestBody TestRequest request) {
+        }
+
+        @GetMapping("/test/type/{id}")
+        void typeMismatch(@PathVariable Long id) {
         }
 
         @GetMapping("/test/unexpected")
