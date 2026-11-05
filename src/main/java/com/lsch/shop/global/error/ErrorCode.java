@@ -14,7 +14,7 @@ public enum ErrorCode {
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메서드입니다."),
     OUT_OF_STOCK(HttpStatus.CONFLICT, "재고가 부족합니다"),
     INVALID_QUANTITY(HttpStatus.BAD_REQUEST, "수량은 1 이상이어야 합니다"),
-    ALREADY_CANCELED_ORDER(HttpStatus.BAD_REQUEST, "이미 취소된 주문입니다"),
+    ALREADY_CANCELED_ORDER(HttpStatus.CONFLICT, "이미 취소된 주문입니다"),
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
     DUPLICATE_EMAIL(HttpStatus.CONFLICT,"중복된 이메일 입니다."),
     FAIL_LOGIN(HttpStatus.UNAUTHORIZED,"로그인에 실패하셨습니다.이메일/비밀번호를 확인해주세요."),
