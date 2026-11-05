@@ -84,6 +84,8 @@ public enum ErrorCode {
 - enum 이름이 곧 API 응답 값이 되므로, 한번 공개한 이름은 함부로 바꾸면 안 된다.
 - 도메인 에러가 생길 때마다 여기에 추가한다 (미션2에서 `OUT_OF_STOCK`, `INVALID_QUANTITY`, `ALREADY_CANCELED_ORDER`, 미션3에서 `PRODUCT_NOT_FOUND` 추가).
 
+> 위 코드는 미션 1~3 시점의 상태다. 이후 `OUT_OF_STOCK`과 `ALREADY_CANCELED_ORDER`는 "서버의 현재 상태와 충돌"하는 경우라 409로 바꿨다. 현재 전체 목록과 기준은 [에러 코드와 HTTP 상태](error-codes.md)에 있다.
+
 ## 3. BusinessException: 비즈니스 예외
 
 ```java
