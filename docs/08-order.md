@@ -288,3 +288,5 @@ List<OrderItem> orderItems = request.items().stream()
   - 중복 요청은 Map에서 **같은 `Product` 객체**를 두 번 꺼내 `decreaseStock`이 두 번 호출된다. 재고는 수량 합계만큼 줄어든다.
   - `createOrder_sameProductTwice_decreasesStockBySum`: 마우스(재고 100)를 2개, 3개로 두 번 담으면 주문이 성공하고 재고는 95. 이 버그는 기존 테스트 23개로 잡히지 않아서 테스트를 추가했다. 전체 24개 통과.
 - 아직 하지 않은 것: SQL 로그로 `where ... in (?, ?)` 한 번만 나가는지 직접 확인하기
+
+> 이후 동시 주문 문제 때문에 `findAllById`를 비관적 락을 거는 `findAllByIdForUpdate`로 바꿨다. → [09. 재고 동시성](09-concurrency.md)
