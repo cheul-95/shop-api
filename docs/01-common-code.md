@@ -207,6 +207,7 @@ public class GlobalExceptionHandler {
 | `BusinessException` | 직접 던진 비즈니스 예외 | ErrorCode에 지정한 상태 |
 | `MethodArgumentNotValidException` | `@Valid` 검증 실패 (`@NotBlank` 등) | 400 `INVALID_INPUT` |
 | `HttpMessageNotReadableException` | JSON 문법이 깨진 요청 | 400 `INVALID_JSON` |
+| `MethodArgumentTypeMismatchException` | 경로변수 타입 불일치 (`/api/products/abc`) | 400 `INVALID_INPUT` (이후 추가) |
 | `NoResourceFoundException` | 없는 URL | 404 `NOT_FOUND` |
 | `HttpRequestMethodNotSupportedException` | GET만 있는데 POST 요청 등 | 405 `METHOD_NOT_ALLOWED` |
 | `Exception` | 위에서 안 잡힌 모든 예외 | 500 `SYSTEM_ERROR` + 에러 로그 |
@@ -223,4 +224,4 @@ public class GlobalExceptionHandler {
 
 ## 6. GlobalExceptionHandlerTest
 
-`@WebMvcTest`로 6가지 예외 응답을 검증했다. 자세한 내용은 [03. 테스트](03-testing.md) 참고.
+`@WebMvcTest`로 6가지 예외 응답을 검증했다. 이후 경로변수 타입 불일치 테스트를 추가해 지금은 7가지다. 자세한 내용은 [03. 테스트](03-testing.md) 참고.
