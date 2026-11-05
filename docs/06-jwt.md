@@ -74,7 +74,7 @@ JWT_SECRET=<openssl rand -base64 48>
 - `optional:`은 ".env 파일이 없어도 에러 내지 마라"는 뜻이다. 파일이 없으면 `${JWT_SECRET}`은 여전히 채워지지 않는다.
 - `.env`는 실행할 때의 **작업 디렉터리** 기준으로 찾는다. IntelliJ와 `./gradlew bootRun`은 프로젝트 루트에서 실행되므로 문제없다.
 - `${JWT_SECRET}`에는 **기본값을 두지 않았다.** 값이 없으면 앱이 시작하지 않는다(`Could not resolve placeholder 'JWT_SECRET'`). secret 없이 실행되는 것보다 시작할 때 실패하는 게 안전하다.
-- `jwt`는 `spring:` 밖(최상위)에 뒀다. `spring.*`는 Spring Boot가 쓰는 네임스페이스다. 처음에는 `spring:` 아래에 넣어서 `spring.jwt.secret`이 됐었다.
+- `jwt`는 `spring:` 밖(최상위)에 뒀다. `spring.*`는 Spring Boot가 쓰는 네임스페이스라, 직접 만든 설정을 그 아래에 두면 Boot의 설정과 섞이고 이름이 겹칠 수 있다.
 - 필요한 키는 `.env.example`에 값 없이 적어 커밋했다. clone한 사람이 무엇을 채워야 하는지 알 수 있다.
 - test 프로필(`application-test.yml`)에는 테스트 전용 secret을 직접 적었다. 그래서 테스트는 `.env` 없이 돌아간다.
 
@@ -227,13 +227,13 @@ class JwtProviderTest {
 
 - **Spring 없이** `new JwtProvider(...)`로 만든다. Docker도 필요 없고 바로 끝난다. 이렇게 하려고 `@Value`를 필드가 아니라 **생성자 파라미터**에 붙였다. 필드에 붙이면 Spring이 주입하기 전까지 값이 비어 있다.
 - **만료**: 만료시간을 음수로 줘서 이미 만료된 토큰을 만든다. `Thread.sleep`이 필요 없다.
-- **다른 키**: 다른 secret으로 **만들고**, 우리 secret으로 **검증한다**. 처음에는 같은 Provider로 만들고 검증해서 예외가 안 났다.
+- **다른 키**: 다른 secret을 가진 Provider로 **만들고**, 우리 secret으로 **검증한다**. 같은 Provider로 만들고 검증하면 서명이 맞아서 예외가 나지 않으니, 만드는 쪽과 검증하는 쪽을 반드시 나눈다.
 - **형식 오류**: 토큰 모양이 아닌 문자열 `"abc"`.
 
 ### 아직 없는 테스트
 
 - `exp - iat`가 설정값과 같은지 확인하는 테스트. ms와 초가 섞이는 실수를 잡아준다.
-- `parse(null)` → `IllegalArgumentException`. 미션 6에서 Authorization 헤더가 없을 때 생기는 경우다.
+- `parse(null)` → `IllegalArgumentException`. (미션 6의 필터는 토큰이 `null`이면 `parse`를 호출하지 않고, `IllegalArgumentException`도 catch한다.)
 
 ## 9. 완료 조건 확인
 
@@ -252,6 +252,8 @@ class JwtProviderTest {
 - [x] `JwtProviderTest` 정상 / 만료 / 다른 키 / 형식 오류 통과
 
 ## 10. 미션 6으로 넘기는 것
+
+> 아래 항목은 마지막 refresh token을 빼고 미션 6에서 해결했다. → [07. JWT 인증 필터](07-jwt-filter.md)
 
 - `SecurityConfig`의 `anyRequest().permitAll()`을 바꿔야 한다(TODO). 지금은 토큰이 없어도 모든 API에 접근된다.
 - 필터에서 `Authorization: Bearer <token>` 헤더를 꺼내서 `parse`로 검증한다. 헤더가 없거나 `Bearer `로 시작하지 않는 경우도 처리해야 한다.

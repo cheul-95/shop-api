@@ -77,10 +77,9 @@ Content-Type: application/json
 
 ### URL에 동사를 넣지 않는다
 
-- 처음에는 `@PostMapping("/createOrder")`로 만들어서 `POST /api/orders/createOrder`가 됐다.
+- `POST /api/orders/createOrder`가 아니라 `POST /api/orders`로 만들었다.
 - REST에서는 **URL로 대상(명사)을 나타내고, 행위는 HTTP 메서드로 표현**한다. "주문 생성"은 `orders` 컬렉션에 POST를 보내는 것만으로 표현된다.
   - 생성 `POST /api/orders`, 조회 `GET /api/orders/{id}`, 취소 `POST /api/orders/{id}/cancel` (또는 `PATCH`)
-- CodeIgniter의 `/컨트롤러/메서드` 라우팅 습관이 나온 부분이었다.
 
 ### 생성은 201
 

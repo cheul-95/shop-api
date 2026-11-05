@@ -203,7 +203,8 @@ public MemberResponse getMe(Long memberId) {
   - 필터에서 넣은 타입과 **파라미터 타입이 다르면 예외 없이 `null`**이 들어온다.
 - `MemberResponse(id, email, name, role)`: `password`는 넣지 않았다. 응답 DTO는 클라이언트가 필요한 값만 고른다.
 - 토큰은 유효한데 회원이 DB에 없으면(탈퇴, DB 초기화) **404 `MEMBER_NOT_FOUND`**로 했다. 401("이 토큰은 더 이상 유효한 사용자를 가리키지 않는다")로 보는 방법도 있다. 기존 `ProductService.getProduct()`와 같은 패턴으로 가려고 404를 골랐다. 이 예외는 컨트롤러 안에서 나므로 `GlobalExceptionHandler`가 정상적으로 잡는다.
-- 처음에는 `MemberRepository`에 `default Member getById(Long id)`를 만들어 `orElseThrow`를 넣었다. 그런데 `JpaRepository`에 이미 `getById`(deprecated, 지금은 `getReferenceById`)가 있어서 **그 메서드를 덮어쓰게 됐고** deprecated 경고가 났다. "없으면 어떤 에러인지"는 비즈니스 규칙이라 Service로 옮겼다.
+- "없으면 어떤 에러인지"는 비즈니스 규칙이라 Repository가 아니라 **Service**에서 `orElseThrow`로 정한다.
+  - Repository에 `default Member getById(Long id)` 같은 메서드를 만들면 안 된다. `JpaRepository`에 이미 `getById`(deprecated, 지금은 `getReferenceById`)가 있어서 **그 메서드를 덮어쓰게 된다.**
 
 ## 6. 기존 테스트에 생긴 영향
 

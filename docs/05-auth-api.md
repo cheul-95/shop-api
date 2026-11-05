@@ -149,7 +149,7 @@ public record AuthResponse(String email, String name) {
 
 - 응답에 `password`는 넣지 않는다. BCrypt 해시는 복호화할 수 없지만, 노출되면 오프라인에서 무차별 대입 공격을 할 수 있고 응답 로그나 프록시에도 남는다.
 - 미션 3에서 "엔티티를 그대로 응답하지 않는 이유"로 `Member.password`를 예로 들었는데, DTO를 써도 필드를 그대로 옮기면 똑같이 노출된다. **DTO에 뭘 담을지는 응답 기준으로 고른다.**
-- 로그인 응답은 미션 5에서 `{accessToken, tokenType, expiresIn}`으로 바뀐다. 그때 가입/로그인 응답 DTO를 나눌 예정이다.
+- 로그인 응답은 미션 5에서 `{accessToken, tokenType, expiresIn}`으로 바뀐다. 그때 가입/로그인 응답 DTO를 나눴다(가입 `AuthResponse`, 로그인 `TokenResponse`). → [06. JWT 발급](06-jwt.md)
 
 ## 7. 완료 조건 확인
 

@@ -40,7 +40,7 @@ N+1을 없애려고 `@EntityGraph(attributePaths = "category")`를 붙이면서 
 | `SignatureException` | `java.security` | `io.jsonwebtoken.security` | 컴파일 에러 |
 | `SignatureException` | `io.jsonwebtoken` (`io.jsonwebtoken.*`로 들어옴) | `io.jsonwebtoken.security` | deprecated 경고 |
 | `AuthenticationException` | `javax.security.sasl` | `org.springframework.security.core` | `@Override` 컴파일 에러 |
-| `ObjectMapper` | `com.fasterxml.jackson.databind` (Jackson 2) | `tools.jackson.databind` (Jackson 3) | 실행 전 리뷰에서 발견 |
+| `ObjectMapper` | `com.fasterxml.jackson.databind` (Jackson 2) | `tools.jackson.databind` (Jackson 3) | 앱 시작 실패 (주입할 빈 없음) |
 
 첫 번째 경우의 컴파일 에러:
 ```
