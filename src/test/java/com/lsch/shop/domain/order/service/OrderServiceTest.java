@@ -109,4 +109,12 @@ class OrderServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.MEMBER_NOT_FOUND);
     }
+
+    @Test
+    void createOrder_sameProductTwice_decreasesStockBySum() {
+        OrderRequest orderRequest = new OrderRequest(List.of(new OrderItemRequest(mouseId, 2),new OrderItemRequest(mouseId, 3)));
+        orderService.createOrder(memberId, orderRequest);
+        Product product = productRepository.findById(mouseId).orElseThrow();
+        assertThat(product.getStock()).isEqualTo(95);
+    }
 }

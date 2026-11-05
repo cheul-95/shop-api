@@ -185,7 +185,7 @@ OrderController                @Valid 검증 실패 → 400 INVALID_INPUT
   ▼
 OrderService (@Transactional)  ── 트랜잭션 시작 ──
   │  회원 조회                    없으면 404 MEMBER_NOT_FOUND
-  │  상품 조회                    없으면 404 PRODUCT_NOT_FOUND
+  │  상품 일괄 조회 (findAllById)  하나라도 없으면 404 PRODUCT_NOT_FOUND
   │  OrderItem.create            재고 차감, 부족하면 409 OUT_OF_STOCK
   │  Order.create → save         INSERT orders, order_item
   │                              ── 커밋: dirty checking → UPDATE product ──
@@ -218,7 +218,7 @@ OrderService (@Transactional)  ── 트랜잭션 시작 ──
 ./gradlew test
 ```
 
-- 전체 23개 테스트
+- 전체 24개 테스트
 - Testcontainers가 테스트용 MySQL 컨테이너를 자동으로 띄웁니다. **Docker만 실행 중이면 되고**, `docker compose up`은 필요 없습니다.
 
 | 종류 | 테스트 | 내용 |
@@ -227,7 +227,7 @@ OrderService (@Transactional)  ── 트랜잭션 시작 ──
 | 단위 | `OrderTest` | 총액 계산, 주문 취소 시 재고 복구, 중복 취소 예외 |
 | 단위 | `JwtProviderTest` | 토큰 정상 / 만료 / 다른 키 / 형식 오류 |
 | 슬라이스 | `GlobalExceptionHandlerTest` | `@WebMvcTest`로 예외 → 에러 응답 변환 |
-| 통합 | `OrderServiceTest` | 재고 차감, 재고 부족, 일부 재고 부족 시 전체 롤백, 상품/회원 없음 |
+| 통합 | `OrderServiceTest` | 재고 차감, 재고 부족, 일부 재고 부족 시 전체 롤백, 같은 상품 중복 주문, 상품/회원 없음 |
 | 통합 | `ShopApplicationTests` | 컨텍스트 로딩 |
 
 ## 트러블슈팅
@@ -318,6 +318,6 @@ docker compose up -d
 - [ ] AWS 배포
 - [ ] 재고 동시성 문제(Lost Update) 재현 및 해결 (비관적 락 / 낙관적 락 비교)
 - [ ] 주문 취소, 내 주문 목록 조회 API
-- [ ] 주문 생성 시 상품 조회를 `findAllById`로 묶기
+- [x] 주문 생성 시 상품 조회를 `findAllById`로 묶기
 - [ ] MockMvc 컨트롤러 테스트
 - [ ] Refresh Token

@@ -32,8 +32,8 @@ POST /api/orders (Bearer 토큰)
  → OrderController             : @Valid 검증 실패 시 400
  → OrderService.createOrder    : ───────── 트랜잭션 시작 ─────────
       회원 조회        (없으면 404 MEMBER_NOT_FOUND)
-      상품마다:
-        상품 조회      (없으면 404 PRODUCT_NOT_FOUND)
+      상품 일괄 조회   findAllById(중복 제거한 ID) (하나라도 없으면 404 PRODUCT_NOT_FOUND)
+      주문 항목마다:
         OrderItem.create → product.decreaseStock (부족하면 409 OUT_OF_STOCK)
       Order.create(member, items...) → totalPrice 계산
       orderRepository.save(order)   → INSERT orders, order_item (cascade)
@@ -145,7 +145,7 @@ Order order = Order.create(member, orderItems.toArray(OrderItem[]::new));
 
 ## 5. `@Transactional` 제거 실험
 
-`OrderService`의 `@Transactional`을 주석 처리하고 같은 정상 주문을 두 번 보냈다.
+`OrderService`의 `@Transactional`을 주석 처리하고 같은 정상 주문을 두 번 보냈다. (실험 당시에는 상품을 `findById`로 하나씩 조회했다. 지금은 `findAllById`로 바뀌었다. [9장](#9-개선-상품을-한-번에-조회))
 
 | | orders | order_item | 재고 (노트북 / 마우스) |
 |---|---|---|---|
@@ -256,6 +256,35 @@ orderRepository.save()   → 실행되지 않음
 ## 8. 남은 것
 
 - **재고 동시성**: 같은 상품에 동시에 주문이 들어오면 두 트랜잭션이 같은 재고를 읽고 각자 차감해서 재고가 덜 줄 수 있다(Lost Update). `ExecutorService`로 동시 주문을 재현한 뒤 비관적 락(`@Lock(PESSIMISTIC_WRITE)`) 또는 낙관적 락(`@Version`)으로 해결한다.
-- 상품 개수만큼 `findById`가 실행된다(상품 3개면 SELECT 3번). `findAllById`로 한 번에 조회하도록 개선할 수 있다.
 - 주문 취소 API (`Order.cancel()`은 미션 2에서 이미 구현), 내 주문 목록 조회 (fetch join으로 N+1 방지)
 - 컨트롤러 테스트(MockMvc): 401 / 400 / 201 응답
+
+## 9. 개선: 상품을 한 번에 조회
+
+처음에는 주문 항목마다 `findById`로 상품을 조회해서, 상품이 3개면 SELECT도 3번 나갔다. 주문 항목의 상품 ID를 모아 `findAllById`로 한 번에 조회하도록 바꿨다.
+
+```java
+List<Long> productIds = request.items().stream()
+        .map(item -> item.productId())
+        .filter(Objects::nonNull)
+        .distinct()
+        .toList();
+List<Product> products = productRepository.findAllById(productIds);
+
+if (products.size() != productIds.size()) {
+    throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND);
+}
+
+Map<Long, Product> productMap = products.stream()
+        .collect(Collectors.toMap(Product::getId, Function.identity()));
+
+List<OrderItem> orderItems = request.items().stream()
+        .map(item -> OrderItem.create(productMap.get(item.productId()), item.quantity())).toList();
+```
+
+- `OrderItem.create`는 바꾸지 않았다. `OrderItem`은 주문서의 한 줄(상품 하나 + 수량)이라, 바뀌는 건 상품을 가져오는 방법뿐이다.
+- **없는 상품 판단**: `findAllById`는 없는 ID가 있어도 예외를 던지지 않고 결과에서 빼고 돌려준다. 그래서 요청한 ID 개수와 조회된 상품 개수를 비교한다.
+- **같은 상품을 두 번 담은 경우**: `distinct()`로 IN 절의 중복을 뺐다. 그래서 개수 비교도 중복을 뺀 `productIds`와 해야 한다. 중복이 포함된 `request.items()`와 비교하면 상품이 있는데도 `PRODUCT_NOT_FOUND`가 나온다.
+  - 중복 요청은 Map에서 **같은 `Product` 객체**를 두 번 꺼내 `decreaseStock`이 두 번 호출된다. 재고는 수량 합계만큼 줄어든다.
+  - `createOrder_sameProductTwice_decreasesStockBySum`: 마우스(재고 100)를 2개, 3개로 두 번 담으면 주문이 성공하고 재고는 95. 이 버그는 기존 테스트 23개로 잡히지 않아서 테스트를 추가했다. 전체 24개 통과.
+- 아직 하지 않은 것: SQL 로그로 `where ... in (?, ?)` 한 번만 나가는지 직접 확인하기
