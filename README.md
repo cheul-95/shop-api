@@ -218,7 +218,7 @@ OrderService (@Transactional)  ── 트랜잭션 시작 ──
 ./gradlew test
 ```
 
-- 전체 24개 테스트
+- 전체 25개 테스트
 - Testcontainers가 테스트용 MySQL 컨테이너를 자동으로 띄웁니다. **Docker만 실행 중이면 되고**, `docker compose up`은 필요 없습니다.
 
 | 종류 | 테스트 | 내용 |
@@ -226,7 +226,7 @@ OrderService (@Transactional)  ── 트랜잭션 시작 ──
 | 단위 | `ProductTest` | 재고 차감, 재고 부족, 잘못된 수량 |
 | 단위 | `OrderTest` | 총액 계산, 주문 취소 시 재고 복구, 중복 취소 예외 |
 | 단위 | `JwtProviderTest` | 토큰 정상 / 만료 / 다른 키 / 형식 오류 |
-| 슬라이스 | `GlobalExceptionHandlerTest` | `@WebMvcTest`로 예외 → 에러 응답 변환 |
+| 슬라이스 | `GlobalExceptionHandlerTest` | `@WebMvcTest`로 예외 → 에러 응답 변환 (비즈니스 예외, 검증 실패, 깨진 JSON, 경로변수 타입 불일치, 404, 405, 500) |
 | 통합 | `OrderServiceTest` | 재고 차감, 재고 부족, 일부 재고 부족 시 전체 롤백, 같은 상품 중복 주문, 상품/회원 없음 |
 | 통합 | `ShopApplicationTests` | 컨텍스트 로딩 |
 
