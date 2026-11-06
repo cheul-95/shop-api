@@ -14,6 +14,7 @@ Spring Boot / JPA를 미션 단위로 공부하면서 정리한 문서입니다.
 | [06. JWT 발급](06-jwt.md) | jjwt 의존성, `.env`로 secret 관리, 키 길이와 알고리즘, 토큰 생성/검증, `TokenResponse`, `JwtProviderTest` | `ebf7be6`, `7cc36ca` |
 | [07. JWT 인증 필터](07-jwt-filter.md) | `OncePerRequestFilter`, SecurityContext, 경로별 인가 규칙, 401/403 JSON(EntryPoint, AccessDeniedHandler), `@AuthenticationPrincipal`, `GET /api/members/me` | `0c9264d` |
 | [08. 주문 생성 API](08-order.md) | `POST /api/orders`, `OrderItem.create`로 재고 차감 강제, 409, `@Transactional` 제거 실험과 dirty checking, OSIV, 통합 테스트에서 `@Transactional`을 빼는 이유, 롤백 테스트의 한계 | `35f0694`, `35c446b` |
+| [09. 재고 동시성](09-concurrency.md) | 동시 주문 100건 재현 테스트(`ExecutorService`, `CountDownLatch`), Lost Update, FK S 락으로 인한 데드락, 낙관적 락 vs 비관적 락 비교, 락 순서(`order by id`) | 이 PR |
 | [트러블슈팅](troubleshooting.md) | 실제로 겪은 오류와 버그, 원인과 해결 | - |
 | [에러 코드와 HTTP 상태](error-codes.md) | 전체 에러 코드 목록, 400/401/403/404/409/500 선택 기준, 예외가 응답이 되는 경로 | - |
 

@@ -63,29 +63,36 @@ Spring Boot 기반 커머스 백엔드 API
 - `OrderItem`의 생성자를 `private`으로 막고 `OrderItem.create()`에서만 재고를 차감하게 해서, **재고 차감 없이 주문 항목을 만드는 실수를 컴파일 단계에서** 막았습니다.
 - 재고 부족은 400이 아니라 **409 CONFLICT**로 응답합니다. 요청 형식은 맞지만 서버의 현재 상태와 충돌하는 경우이기 때문입니다.
 
-### 2. N+1 문제 → [04. 상품 조회 API](docs/04-product-api.md), [00. 초기 세팅](docs/00-project-setup.md)
+### 2. 재고 동시성: 테스트로 재현하고 락 방식 비교 → [09. 재고 동시성](docs/09-concurrency.md)
+
+- 재고 100인 상품에 주문 100건을 동시에 보내는 테스트로 문제를 재현했습니다. 17건이 성공했는데 재고는 8만 줄었고(**Lost Update**), 나머지 83건은 **데드락**으로 실패했습니다.
+- 데드락은 `order_item` INSERT의 FK 검사가 `product`에 S 락을 걸고, 커밋할 때 `UPDATE product`가 X 락으로 올리려다 서로 막혀서 생긴 것으로 분석했습니다.
+- 같은 테스트로 비교했습니다. **낙관적 락**(`@Version`)은 Lost Update는 막았지만 데드락이 남아 90%가 실패했습니다. **비관적 락**(`SELECT ... FOR UPDATE`)은 조회 시점에 X 락을 잡아서 100건 모두 성공하고 재고가 정확히 0이 됐습니다.
+- 여러 상품을 주문할 때 락 순서가 엇갈려 생기는 데드락을 막으려고 `order by id`로 항상 같은 순서로 락을 잡습니다.
+
+### 3. N+1 문제 → [04. 상품 조회 API](docs/04-product-api.md), [00. 초기 세팅](docs/00-project-setup.md)
 
 - 상품 목록에서 카테고리를 `@EntityGraph`로 함께 조회해서, **SQL 로그로 SELECT 2번(목록 + count)만 나가는 것**을 확인했습니다.
 - 기본 안전장치로 `default_batch_fetch_size: 100`을 두었습니다. 컬렉션은 fetch join과 페이징을 같이 쓸 수 없어서 IN 쿼리로 묶는 방식이 필요합니다.
 
-### 3. JWT 인증과 401/403 JSON 응답 → [06. JWT 발급](docs/06-jwt.md), [07. JWT 인증 필터](docs/07-jwt-filter.md)
+### 4. JWT 인증과 401/403 JSON 응답 → [06. JWT 발급](docs/06-jwt.md), [07. JWT 인증 필터](docs/07-jwt-filter.md)
 
 - `OncePerRequestFilter`로 토큰을 검증하고, 성공하면 SecurityContext에 `memberId`와 권한을 저장합니다. 컨트롤러에서는 `@AuthenticationPrincipal`로 꺼냅니다.
 - 필터에서 나는 예외는 `@RestControllerAdvice`가 잡지 못합니다. 그래서 `AuthenticationEntryPoint`(401)와 `AccessDeniedHandler`(403)가 다른 API와 **같은 에러 형식**으로 응답하게 했습니다.
 - JWT secret은 `.env`와 환경변수로 관리해서 저장소에 올라가지 않습니다. 값이 없으면 애플리케이션이 시작되지 않습니다.
 
-### 4. 보안을 고려한 회원 API → [05. 회원가입 / 로그인 API](docs/05-auth-api.md)
+### 5. 보안을 고려한 회원 API → [05. 회원가입 / 로그인 API](docs/05-auth-api.md)
 
 - 비밀번호는 BCrypt 해시로 저장합니다.
 - 로그인할 때 "없는 이메일"과 "틀린 비밀번호"를 같은 401로 응답합니다. 응답만 보고 가입된 이메일을 알아낼 수 없게 하기 위해서입니다(계정 열거 방지).
 - 응답 DTO를 따로 두어 엔티티(비밀번호 해시 포함)가 그대로 노출되지 않게 했습니다. 응답에는 클라이언트가 필요한 값만 담습니다.
 
-### 5. 일관된 예외 처리 → [01. 공통 코드](docs/01-common-code.md)
+### 6. 일관된 예외 처리 → [01. 공통 코드](docs/01-common-code.md)
 
 - `ErrorCode` enum이 HTTP 상태와 메시지를 가지고, `BusinessException`(`RuntimeException` 상속)이 이를 담아 던집니다.
 - `GlobalExceptionHandler`가 예상한 예외는 `ErrorCode`대로, 예상하지 못한 예외는 500 + 에러 로그로 처리합니다.
 
-### 6. 운영과 같은 DB로 테스트 → [03. 테스트](docs/03-testing.md)
+### 7. 운영과 같은 DB로 테스트 → [03. 테스트](docs/03-testing.md)
 
 - H2 대신 **Testcontainers로 MySQL 8.4**를 띄워서 통합 테스트를 합니다. 예약어나 문법 차이를 테스트 단계에서 잡을 수 있습니다.
 - 주문 통합 테스트에는 `@Transactional`을 붙이지 않았습니다. 붙이면 1차 캐시 때문에 실제 DB 반영 여부를 확인할 수 없기 때문입니다.
@@ -185,7 +192,7 @@ OrderController                @Valid 검증 실패 → 400 INVALID_INPUT
   ▼
 OrderService (@Transactional)  ── 트랜잭션 시작 ──
   │  회원 조회                    없으면 404 MEMBER_NOT_FOUND
-  │  상품 일괄 조회 (findAllById)  하나라도 없으면 404 PRODUCT_NOT_FOUND
+  │  상품 일괄 조회 (FOR UPDATE)   하나라도 없으면 404 PRODUCT_NOT_FOUND
   │  OrderItem.create            재고 차감, 부족하면 409 OUT_OF_STOCK
   │  Order.create → save         INSERT orders, order_item
   │                              ── 커밋: dirty checking → UPDATE product ──
@@ -218,7 +225,7 @@ OrderService (@Transactional)  ── 트랜잭션 시작 ──
 ./gradlew test
 ```
 
-- 전체 24개 테스트
+- 전체 26개 테스트
 - Testcontainers가 테스트용 MySQL 컨테이너를 자동으로 띄웁니다. **Docker만 실행 중이면 되고**, `docker compose up`은 필요 없습니다.
 
 | 종류 | 테스트 | 내용 |
@@ -226,8 +233,9 @@ OrderService (@Transactional)  ── 트랜잭션 시작 ──
 | 단위 | `ProductTest` | 재고 차감, 재고 부족, 잘못된 수량 |
 | 단위 | `OrderTest` | 총액 계산, 주문 취소 시 재고 복구, 중복 취소 예외 |
 | 단위 | `JwtProviderTest` | 토큰 정상 / 만료 / 다른 키 / 형식 오류 |
-| 슬라이스 | `GlobalExceptionHandlerTest` | `@WebMvcTest`로 예외 → 에러 응답 변환 |
+| 슬라이스 | `GlobalExceptionHandlerTest` | `@WebMvcTest`로 예외 → 에러 응답 변환 (비즈니스 예외, 검증 실패, 깨진 JSON, 경로변수 타입 불일치, 404, 405, 500) |
 | 통합 | `OrderServiceTest` | 재고 차감, 재고 부족, 일부 재고 부족 시 전체 롤백, 같은 상품 중복 주문, 상품/회원 없음 |
+| 통합 | `OrderConcurrencyTest` | 재고 100에 동시 주문 100건 → 재고가 성공 건수만큼 정확히 감소 (비관적 락) |
 | 통합 | `ShopApplicationTests` | 컨텍스트 로딩 |
 
 ## 트러블슈팅
@@ -309,6 +317,7 @@ docker compose up -d
 | [06. JWT 발급](docs/06-jwt.md) | secret 관리, 키 길이와 알고리즘, 토큰 생성/검증 |
 | [07. JWT 인증 필터](docs/07-jwt-filter.md) | `OncePerRequestFilter`, 경로별 인가, 401/403 JSON |
 | [08. 주문 생성 API](docs/08-order.md) | `@Transactional` 제거 실험, dirty checking, OSIV, 통합 테스트 설계 |
+| [09. 재고 동시성](docs/09-concurrency.md) | Lost Update와 데드락 재현, 낙관적/비관적 락 비교, 락 순서 |
 | [에러 코드와 HTTP 상태](docs/error-codes.md) | 전체 에러 코드 목록, 상태 코드 선택 기준, 새 에러 추가 방법 |
 
 브랜치, 커밋 메시지, PR 규칙은 [CONTRIBUTING.md](CONTRIBUTING.md)에 정리했습니다.
@@ -316,7 +325,7 @@ docker compose up -d
 ## 앞으로 할 것
 
 - [ ] AWS 배포
-- [ ] 재고 동시성 문제(Lost Update) 재현 및 해결 (비관적 락 / 낙관적 락 비교)
+- [x] 재고 동시성 문제(Lost Update) 재현 및 해결 (비관적 락 / 낙관적 락 비교)
 - [ ] 주문 취소, 내 주문 목록 조회 API
 - [x] 주문 생성 시 상품 조회를 `findAllById`로 묶기
 - [ ] MockMvc 컨트롤러 테스트

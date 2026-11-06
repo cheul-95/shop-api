@@ -18,7 +18,7 @@
 
 | 상태 | code | message | 발생 위치 | 언제 |
 |---|---|---|---|---|
-| 400 | `INVALID_INPUT` | 입력값이 올바르지 않습니다. | `GlobalExceptionHandler` | `@Valid` 검증 실패 (`MethodArgumentNotValidException`) |
+| 400 | `INVALID_INPUT` | 입력값이 올바르지 않습니다. | `GlobalExceptionHandler` | `@Valid` 검증 실패 (`MethodArgumentNotValidException`), 경로변수 타입 불일치 (`MethodArgumentTypeMismatchException`, 예: `GET /api/products/abc`) |
 | 400 | `INVALID_JSON` | 요청 형식이 올바르지 않습니다. | `GlobalExceptionHandler` | JSON 문법 오류, 타입 불일치 (`HttpMessageNotReadableException`) |
 | 400 | `INVALID_QUANTITY` | 수량은 1 이상이어야 합니다 | `Product.decreaseStock`, `increaseStock` | 수량 0 이하. API에서는 `@Min(1)`이 먼저 막아서 `INVALID_INPUT`이 나가고, 이 코드는 API를 거치지 않는 경로를 지킨다 |
 | 401 | `UNAUTHORIZED` | 로그인이 필요합니다. | `JwtAuthenticationEntryPoint` | 인증이 필요한 API에 토큰이 없거나 유효하지 않음 |
@@ -45,7 +45,8 @@
 ### 400 Bad Request: 요청 자체가 잘못됨
 
 - 서버 상태와 상관없이 **요청만 보고 틀렸다고 판단**할 수 있는 경우다. 같은 요청은 언제 보내도 실패한다.
-- 예: 수량 0, 필수값 누락, 깨진 JSON
+- 예: 수량 0, 필수값 누락, 깨진 JSON, 숫자 자리에 문자 (`/api/products/abc`)
+- `/api/products/abc`는 처음에 전용 핸들러가 없어서 `Exception` 핸들러로 가 **500**이 나갔다. 클라이언트가 값을 고치면 해결되는 문제라 `MethodArgumentTypeMismatchException` 핸들러를 추가해 400 `INVALID_INPUT`으로 바꿨다.
 
 ### 401 Unauthorized vs 403 Forbidden
 
@@ -109,4 +110,3 @@ assertThatThrownBy(() -> ...)
 ## 6. 검토할 것
 
 - `EXPIRED_TOKEN`, `INVALID_TOKEN`은 만들어 두었지만 쓰지 않는다. 필터에서 실패 이유를 request attribute에 담고, EntryPoint에서 꺼내서 구분하는 방법이 있다.
-- `@PathVariable` 타입 불일치(`/api/products/abc`)는 전용 핸들러가 없어서 지금은 500으로 갈 수 있다. 확인 후 400으로 처리할지 정한다.
