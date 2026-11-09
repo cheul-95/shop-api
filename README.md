@@ -5,6 +5,8 @@
 ![Spring Security](https://img.shields.io/badge/Spring%20Security-JWT-6DB33F?logo=springsecurity&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-8.4-4479A1?logo=mysql&logoColor=white)
 ![Testcontainers](https://img.shields.io/badge/Testcontainers-MySQL-2496ED?logo=docker&logoColor=white)
+![AWS EC2](https://img.shields.io/badge/AWS-EC2-FF9900?logo=amazonec2&logoColor=white)
+[![CI/CD](https://github.com/cheul-95/shop-api/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/cheul-95/shop-api/actions/workflows/ci-cd.yml)
 
 Spring Boot 기반 커머스 백엔드 API
 
@@ -19,12 +21,13 @@ Spring Boot 기반 커머스 백엔드 API
 4. [ERD](#erd)
 5. [패키지 구조](#패키지-구조)
 6. [요청 흐름](#요청-흐름)
-7. [에러 응답](#에러-응답)
-8. [테스트](#테스트)
-9. [트러블슈팅](#트러블슈팅)
-10. [실행 방법](#실행-방법)
-11. [학습 기록](#학습-기록)
-12. [앞으로 할 것](#앞으로-할-것)
+7. [배포 구조와 CI/CD](#배포-구조와-cicd)
+8. [에러 응답](#에러-응답)
+9. [테스트](#테스트)
+10. [트러블슈팅](#트러블슈팅)
+11. [실행 방법](#실행-방법)
+12. [학습 기록](#학습-기록)
+13. [앞으로 할 것](#앞으로-할-것)
 
 ## 기술 스택
 
@@ -37,6 +40,7 @@ Spring Boot 기반 커머스 백엔드 API
 | Test | JUnit 5, AssertJ, Testcontainers (MySQL), MockMvc |
 | Docs | springdoc-openapi (Swagger UI) |
 | Build | Gradle |
+| Infra | AWS EC2, Docker / Docker Compose, GitHub Actions, GHCR |
 
 ## 주요 기능
 
@@ -96,6 +100,13 @@ Spring Boot 기반 커머스 백엔드 API
 
 - H2 대신 **Testcontainers로 MySQL 8.4**를 띄워서 통합 테스트를 합니다. 예약어나 문법 차이를 테스트 단계에서 잡을 수 있습니다.
 - 주문 통합 테스트에는 `@Transactional`을 붙이지 않았습니다. 붙이면 1차 캐시 때문에 실제 DB 반영 여부를 확인할 수 없기 때문입니다.
+
+### 8. 배포와 CI/CD → [10. AWS 배포와 CI/CD](docs/10-deploy.md)
+
+- EC2 한 대에 **Docker Compose로 Spring Boot와 MySQL**을 띄웠습니다. MySQL 포트는 외부에 열지 않고 app만 Docker 네트워크로 접근합니다.
+- main에 머지하면 GitHub Actions가 **테스트 → 이미지 빌드(GHCR) → SSH 배포 → 헬스체크**를 실행합니다. 테스트가 실패하면 배포하지 않습니다.
+- 이미지는 **multi-stage 빌드**로 JRE와 jar만 담고 non-root 사용자로 실행합니다. 서버에서 빌드하지 않아서 작은 인스턴스의 메모리 부담이 없습니다.
+- JWT secret과 DB 비밀번호는 **서버 `.env`와 GitHub Secrets**로만 주입합니다. prod 프로필은 기본값이 없어서 값이 빠지면 기동하지 않고, `ddl-auto: validate`로 엔티티가 운영 스키마를 바꾸지 않게 했습니다.
 
 ## ERD
 
@@ -200,6 +211,41 @@ OrderService (@Transactional)  ── 트랜잭션 시작 ──
 201 Created  { id, orderStatus, totalPrice, items }
 ```
 
+## 배포 구조와 CI/CD
+
+```
+Developer ── merge to main
+  │
+  ▼
+GitHub Actions
+  ├─ test     ./gradlew test (Testcontainers MySQL)
+  ├─ build    docker build → push ghcr.io/cheul-95/shop-api:{latest, sha}
+  └─ deploy   SSH → docker compose pull && up -d → 헬스체크
+                │
+                ▼
+AWS EC2 (Ubuntu 24.04, Elastic IP)
+  └─ Docker Compose
+       ├─ shop-api   Spring Boot, prod 프로필      :8080 공개
+       ├─ shop-db    MySQL 8.4 + 볼륨              포트 비공개
+       └─ .env       JWT_SECRET, DB 비밀번호 (서버에만 존재)
+```
+
+| 이벤트 | 실행되는 job |
+|---|---|
+| PR → main | `test` |
+| main push (머지) | `test` → `build` → `deploy` |
+
+| 파일 | 역할 |
+|---|---|
+| [`Dockerfile`](Dockerfile) | multi-stage 빌드 (JDK로 `bootJar` → JRE로 실행), non-root, `TZ=Asia/Seoul` |
+| [`docker-compose.prod.yml`](docker-compose.prod.yml) | app + MySQL, MySQL 헬스체크 통과 후 app 기동, 이미지 태그는 커밋 sha |
+| [`application-prod.yml`](src/main/resources/application-prod.yml) | 환경변수 주입(기본값 없음), `ddl-auto: validate`, `sql.init.mode: never`, 로그 축소 |
+| [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml) | 테스트, GHCR push, SSH 배포, `/v3/api-docs` 헬스체크 |
+
+- 배포할 때 app 컨테이너만 다시 만들고 DB 컨테이너와 볼륨은 그대로 둡니다.
+- 보안그룹은 8080(API)과 22(SSH, 키 인증만)만 엽니다. 3306은 열지 않습니다.
+- 구성을 고른 이유, 보안그룹, 남은 개선점(HTTPS, RDS, Flyway, 무중단 배포): [docs/10-deploy.md](docs/10-deploy.md)
+
 ## 에러 응답
 
 모든 에러는 같은 형식으로 응답합니다.
@@ -249,6 +295,10 @@ OrderService (@Transactional)  ── 트랜잭션 시작 ──
 | 3 | SecurityConfig에 의존성을 추가하자 `@WebMvcTest`가 깨짐 | 슬라이스 테스트, `@MockitoBean` |
 | 4 | `getById`로 조회한 엔티티에서 `LazyInitializationException` | 프록시, OSIV |
 | 5 | 없는 ID로 `10L`을 쓰면 순서에 따라 깨질 수 있음 | flaky 테스트, AUTO_INCREMENT |
+| 6 | Docker 빌드 중 `./gradlew dependencies` 실패 | Gradle wrapper 다운로드 타임아웃 |
+| 7 | 앱은 떴는데 브라우저에서 접속 안 됨 | 보안그룹, timeout vs refused |
+| 8 | CI에서 `./gradlew: Permission denied` | git 파일 모드, Windows |
+| 9 | 컨테이너 안의 시간이 UTC | JVM 시간대 vs JDBC `serverTimezone` |
 
 ## 실행 방법
 
@@ -299,6 +349,7 @@ docker compose up -d
 |---|---|---|
 | `local` (기본) | 로컬 개발, `ddl-auto: update`, SQL·파라미터 로그 | `application-local.yml` |
 | `test` | 테스트, Testcontainers + `ddl-auto: create-drop` | `src/test/resources/application-test.yml` |
+| `prod` | 서버 배포 (Docker 이미지 기본값), 환경변수 필수, `ddl-auto: validate` | `application-prod.yml` |
 
 </details>
 
@@ -318,15 +369,18 @@ docker compose up -d
 | [07. JWT 인증 필터](docs/07-jwt-filter.md) | `OncePerRequestFilter`, 경로별 인가, 401/403 JSON |
 | [08. 주문 생성 API](docs/08-order.md) | `@Transactional` 제거 실험, dirty checking, OSIV, 통합 테스트 설계 |
 | [09. 재고 동시성](docs/09-concurrency.md) | Lost Update와 데드락 재현, 낙관적/비관적 락 비교, 락 순서 |
+| [10. AWS 배포와 CI/CD](docs/10-deploy.md) | EC2 + Docker Compose, multi-stage Dockerfile, prod 프로필, GitHub Actions → GHCR → SSH 배포, 보안그룹 |
 | [에러 코드와 HTTP 상태](docs/error-codes.md) | 전체 에러 코드 목록, 상태 코드 선택 기준, 새 에러 추가 방법 |
 
 브랜치, 커밋 메시지, PR 규칙은 [CONTRIBUTING.md](CONTRIBUTING.md)에 정리했습니다.
 
 ## 앞으로 할 것
 
-- [ ] AWS 배포
+- [x] AWS 배포 (EC2 + Docker Compose, GitHub Actions CI/CD)
 - [x] 재고 동시성 문제(Lost Update) 재현 및 해결 (비관적 락 / 낙관적 락 비교)
 - [ ] 주문 취소, 내 주문 목록 조회 API
 - [x] 주문 생성 시 상품 조회를 `findAllById`로 묶기
 - [ ] MockMvc 컨트롤러 테스트
 - [ ] Refresh Token
+- [ ] HTTPS (도메인 + Nginx + Let's Encrypt)
+- [ ] DB를 RDS로 분리, Flyway로 스키마 관리
