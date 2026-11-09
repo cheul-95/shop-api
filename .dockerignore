@@ -6,3 +6,5 @@ build
 docs
 *.md
 docker-compose.yml
+certbot
+nginx
