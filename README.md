@@ -54,7 +54,7 @@ Spring Boot 기반 커머스 백엔드 API
 | POST | `/api/orders` | 주문 생성 + 재고 차감 (201, 재고 부족 409 `OUT_OF_STOCK`, 상품/회원 없음 404) | O |
 
 - 인증이 필요한 API는 `Authorization: Bearer <accessToken>` 헤더가 필요합니다.
-- 실행 후 Swagger UI(http://localhost:8080/swagger-ui.html)에서 직접 호출해 볼 수 있습니다.
+- 배포된 Swagger UI(https://shop-api.lsch.co.kr/swagger-ui.html) 또는 로컬 실행 후 http://localhost:8080/swagger-ui.html 에서 직접 호출해 볼 수 있습니다.
 
 ## 핵심 설계와 고민
 
@@ -213,6 +213,8 @@ OrderService (@Transactional)  ── 트랜잭션 시작 ──
 
 ## 배포 구조와 CI/CD
 
+배포 주소: **https://shop-api.lsch.co.kr/swagger-ui.html**
+
 ```
 Developer ── merge to main
   │
@@ -220,14 +222,16 @@ Developer ── merge to main
 GitHub Actions
   ├─ test     ./gradlew test (Testcontainers MySQL)
   ├─ build    docker build → push ghcr.io/cheul-95/shop-api:{latest, sha}
-  └─ deploy   SSH → docker compose pull && up -d → 헬스체크
+  └─ deploy   SSH → docker compose pull && up -d → https 헬스체크
                 │
                 ▼
-AWS EC2 (Ubuntu 24.04, Elastic IP)
+AWS EC2 (Ubuntu 24.04, Elastic IP) ◀── Route 53: shop-api.lsch.co.kr
   └─ Docker Compose
-       ├─ shop-api   Spring Boot, prod 프로필      :8080 공개
-       ├─ shop-db    MySQL 8.4 + 볼륨              포트 비공개
-       └─ .env       JWT_SECRET, DB 비밀번호 (서버에만 존재)
+       ├─ shop-nginx    :80 → 443 리다이렉트, :443 TLS 종료 → app:8080
+       ├─ shop-certbot  Let's Encrypt 인증서 자동 갱신
+       ├─ shop-api      Spring Boot, prod 프로필    외부 비공개
+       ├─ shop-db       MySQL 8.4 + 볼륨           외부 비공개
+       └─ .env          JWT_SECRET, DB 비밀번호 (서버에만 존재)
 ```
 
 | 이벤트 | 실행되는 job |
@@ -238,13 +242,14 @@ AWS EC2 (Ubuntu 24.04, Elastic IP)
 | 파일 | 역할 |
 |---|---|
 | [`Dockerfile`](Dockerfile) | multi-stage 빌드 (JDK로 `bootJar` → JRE로 실행), non-root, `TZ=Asia/Seoul` |
-| [`docker-compose.prod.yml`](docker-compose.prod.yml) | app + MySQL, MySQL 헬스체크 통과 후 app 기동, 이미지 태그는 커밋 sha |
-| [`application-prod.yml`](src/main/resources/application-prod.yml) | 환경변수 주입(기본값 없음), `ddl-auto: validate`, `sql.init.mode: never`, 로그 축소 |
-| [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml) | 테스트, GHCR push, SSH 배포, `/v3/api-docs` 헬스체크 |
+| [`docker-compose.prod.yml`](docker-compose.prod.yml) | Nginx + certbot + app + MySQL, MySQL 헬스체크 통과 후 app 기동, 이미지 태그는 커밋 sha |
+| [`nginx/default.conf`](nginx/default.conf) | HTTP → HTTPS 리다이렉트, TLS 1.2/1.3, `X-Forwarded-*` 헤더 전달 |
+| [`application-prod.yml`](src/main/resources/application-prod.yml) | 환경변수 주입(기본값 없음), `ddl-auto: validate`, `sql.init.mode: never`, `forward-headers-strategy`, 로그 축소 |
+| [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml) | 테스트, GHCR push, SSH 배포, `https://.../v3/api-docs` 헬스체크 |
 
-- 배포할 때 app 컨테이너만 다시 만들고 DB 컨테이너와 볼륨은 그대로 둡니다.
-- 보안그룹은 8080(API)과 22(SSH, 키 인증만)만 엽니다. 3306은 열지 않습니다.
-- 구성을 고른 이유, 보안그룹, 남은 개선점(HTTPS, RDS, Flyway, 무중단 배포): [docs/10-deploy.md](docs/10-deploy.md)
+- 배포할 때 app 컨테이너만 다시 만들고 DB, Nginx 컨테이너와 볼륨은 그대로 둡니다.
+- 보안그룹은 80, 443(Nginx)과 22(SSH, 키 인증만)만 엽니다. 앱(8080)과 DB(3306)는 외부에 열지 않습니다.
+- 구성을 고른 이유, HTTPS 구성, 남은 개선점(RDS, Flyway, 무중단 배포): [docs/10-deploy.md](docs/10-deploy.md)
 
 ## 에러 응답
 
@@ -382,5 +387,5 @@ docker compose up -d
 - [x] 주문 생성 시 상품 조회를 `findAllById`로 묶기
 - [ ] MockMvc 컨트롤러 테스트
 - [ ] Refresh Token
-- [ ] HTTPS (도메인 + Nginx + Let's Encrypt)
+- [x] HTTPS (도메인 + Nginx + Let's Encrypt)
 - [ ] DB를 RDS로 분리, Flyway로 스키마 관리
