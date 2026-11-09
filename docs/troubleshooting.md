@@ -182,3 +182,86 @@ orderService.createOrder(Long.MAX_VALUE, orderRequest)
 
 ---
 
+
+---
+
+## 6. Docker 빌드 중 `./gradlew dependencies`가 실패함
+
+**상황**
+`docker build` 중 `RUN chmod +x gradlew && ./gradlew dependencies` 단계가 `exit code: 1`로 실패했다. 로그에는 `HttpURLConnection.getResponseCode`, `parseHTTPHeader`가 들어간 스택 트레이스가 있었다. 같은 명령을 다시 실행하자 통과했다. EC2에서도 같은 단계에서 한 번 실패했다.
+
+**원인**
+- 빌드 컨테이너에는 Gradle이 없어서 wrapper가 `services.gradle.org`에서 Gradle 배포판을 내려받는다.
+- `gradle/wrapper/gradle-wrapper.properties`가 `networkTimeout=10000`(10초), `retries=0`이었다. 응답이 한 번만 늦어도 바로 실패한다.
+
+**해결**
+
+```properties
+networkTimeout=60000
+retries=3
+```
+
+**배운 점**
+- "다시 하니까 된다"는 해결이 아니다. CI에서는 매번 새 환경에서 다운로드하므로 같은 실패가 랜덤하게 난다.
+- 로그를 끝까지 보지 않으면 원인을 코드 문제로 오해하기 쉽다. 스택 트레이스의 맨 위 예외(타임아웃)를 먼저 본다.
+
+---
+
+## 7. 앱은 떴는데 브라우저에서 접속이 안 됨
+
+**상황**
+EC2에서 `docker logs shop-api`에 `Started ShopApplication`이 찍혔다. 그런데 브라우저에서 `http://<IP>:8080/swagger-ui.html`이 열리지 않고 시간 초과가 났다.
+
+**원인**
+보안그룹 인바운드 규칙에 8080이 없었다. 인스턴스를 만들 때 SSH(22)만 추가했다.
+
+**해결**
+보안그룹에 `사용자 지정 TCP 8080, 0.0.0.0/0` 규칙을 추가했다. 저장하면 바로 적용되고 재시작은 필요 없다.
+
+**배운 점**
+- 서버 안에서 `curl localhost:8080`이 200이면 앱은 정상이고 네트워크(보안그룹, 방화벽) 문제다. 안과 밖을 나눠서 확인하면 원인 범위가 바로 좁혀진다.
+- 연결이 **거부(refused)**되면 포트에 아무것도 없는 것이고, **시간 초과(timeout)**면 중간에서 패킷이 막힌 것이다. 보안그룹은 막을 때 응답을 보내지 않아서 timeout으로 보인다.
+
+---
+
+## 8. CI에서 `./gradlew: Permission denied`
+
+**상황**
+GitHub Actions의 `./gradlew test` 단계가 `Permission denied`(exit code 126)로 14초 만에 실패했다. 로컬과 Dockerfile 빌드에서는 문제가 없었다.
+
+**원인**
+- Windows에서 커밋해서 git에 `gradlew`가 실행 권한 없는 `100644`로 저장돼 있었다.
+- Dockerfile은 `chmod +x gradlew`를 직접 해서 문제가 드러나지 않았다.
+
+**해결**
+
+```bash
+git update-index --chmod=+x gradlew   # 100644 → 100755
+```
+
+**배운 점**
+- 파일 권한도 git이 추적한다. `git ls-files -s gradlew`로 모드를 확인할 수 있다.
+- Windows는 실행 권한 개념이 달라서 로컬에서는 이 문제를 알 수 없다. Linux에서 처음 실행되는 CI에서 드러난다.
+
+---
+
+## 9. 컨테이너 안의 시간이 UTC
+
+**상황**
+prod 프로필로 띄운 컨테이너의 로그 시각이 `07:39:02Z`였다. 한국 시간(16:39)보다 9시간 늦었다.
+
+**원인**
+- 베이스 이미지의 시간대가 UTC라서 JVM 기본 시간대도 UTC다.
+- JDBC URL의 `serverTimezone=Asia/Seoul`은 드라이버가 DB와 시간을 주고받을 때 쓰는 설정이다. JVM이 `LocalDateTime.now()`로 만드는 값(JPA Auditing의 `createdAt`)은 JVM 시간대를 따른다.
+
+**해결**
+
+```dockerfile
+ENV TZ=Asia/Seoul
+```
+
+로그가 `16:40:20+09:00`으로 바뀐 것을 확인했다.
+
+**배운 점**
+- 시간대는 OS, JVM, JDBC, DB가 각각 따로 가진다. 한 곳만 맞추면 어긋난다.
+- 로컬 PC는 한국 시간이라 이 문제를 알 수 없다. 컨테이너로 처음 띄울 때 드러난다.
