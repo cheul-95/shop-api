@@ -22,8 +22,7 @@ services:
       retries: 10
 
   app:
-    build: .
-    image: shop-api
+    image: ghcr.io/cheul-95/shop-api:${IMAGE_TAG:-latest}
     container_name: shop-api
     restart: unless-stopped
     depends_on:
